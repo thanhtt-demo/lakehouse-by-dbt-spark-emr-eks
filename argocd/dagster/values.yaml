@@ -5,12 +5,13 @@
 # Each code location has its own image, service account (IRSA), and resource limits.
 # Image repository URLs and IRSA role ARNs are placeholders — populated from Terraform outputs.
 # ---------------------------------------------------------------------------------------------------------------------
-
+# 
 # -- Official Dagster chart values (passed to dependency)
 dagster:
-
   # ---------------------------------------------------------------------------
+
   # DAGSTER WEBSERVER
+
   # ---------------------------------------------------------------------------
   dagsterWebserver:
     replicaCount: 1
@@ -23,9 +24,10 @@ dagster:
       limits:
         cpu: 500m
         memory: 1Gi
-
   # ---------------------------------------------------------------------------
+
   # DAGSTER DAEMON
+
   # ---------------------------------------------------------------------------
   dagsterDaemon:
     replicaCount: 1
@@ -38,21 +40,25 @@ dagster:
       limits:
         cpu: 500m
         memory: 1Gi
-
   # ---------------------------------------------------------------------------
+
   # USER CODE DEPLOYMENTS — 2 code locations (de-team, sales-team)
+
   # Each entry runs as a separate gRPC server pod with its own image and service account.
+
   # ---------------------------------------------------------------------------
   dagster-user-deployments:
     enabled: true
     deployments:
       # -------------------------------------------------------------------------
+
       # DE-TEAM — dbt-spark, submits Spark jobs to EMR on EKS via PipesEMRContainersClient
+
       # -------------------------------------------------------------------------
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/de-team-code"
-          tag: "latest"
+          tag: "5b1e835a"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--python-file"
@@ -77,14 +83,15 @@ dagster:
           name: dagster-de-team
           annotations:
             eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260502235436821500000001"
+      # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
 
       # -------------------------------------------------------------------------
-      # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
-      # -------------------------------------------------------------------------
       - name: sales-team
+        # -------------------------------------------------------------------------
+
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/sales-team-code"
-          tag: "latest"
+          tag: "5b1e835a"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--python-file"
