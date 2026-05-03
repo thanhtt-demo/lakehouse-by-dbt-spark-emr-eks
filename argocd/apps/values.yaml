@@ -72,6 +72,8 @@ appProject:
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
+    - group: storage.k8s.io
+      kind: StorageClass
     - group: karpenter.sh
       kind: NodePool
     - group: karpenter.k8s.aws
