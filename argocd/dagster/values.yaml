@@ -14,6 +14,8 @@ dagster:
   # ---------------------------------------------------------------------------
   dagsterWebserver:
     replicaCount: 1
+    nodeSelector:
+      role: workload
     resources:
       requests:
         cpu: 250m
@@ -27,6 +29,8 @@ dagster:
   # ---------------------------------------------------------------------------
   dagsterDaemon:
     replicaCount: 1
+    nodeSelector:
+      role: workload
     resources:
       requests:
         cpu: 250m
@@ -54,6 +58,8 @@ dagster:
           - "--python-file"
           - "/app/dagster_project/definitions.py"
         port: 3030
+        nodeSelector:
+          role: workload
         resources:
           requests:
             cpu: 250m
@@ -84,6 +90,8 @@ dagster:
           - "--python-file"
           - "/app/dagster_project/definitions.py"
         port: 3030
+        nodeSelector:
+          role: workload
         resources:
           requests:
             cpu: 250m
