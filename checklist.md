@@ -335,9 +335,103 @@ aws glue get-databases \
 
 ## Notes
 
-- Karpenter controller is **NOT running yet** — Helm chart + NodePool CRDs + EC2NodeClass will be deployed by ArgoCD (task 6)
-- `spark` namespace does **NOT exist yet** — will be created by ArgoCD (task 6). EMR Virtual Cluster is configured with `create_namespace = false`
+- Karpenter controller is **NOT running yet** — Helm chart + NodePool CRDs + EC2NodeClass are defined in `argocd/karpenter/` but ArgoCD has not been bootstrapped yet
+- `spark` and `dagster` namespaces are defined in `argocd/namespaces/` but not yet created on the cluster
 - EMR execution role is created by the EMR community module, NOT the IAM module
 - Dagster IRSA roles require the `spark` and `dagster` namespaces + service accounts to exist (created by ArgoCD)
-- Current state: all AWS resources for tasks 1–3 ready, waiting for ArgoCD to deploy Kubernetes workloads
+- ArgoCD App-of-Apps charts are ready — bootstrap with `kubectl apply -f argocd/app-of-apps.yaml` after ArgoCD is installed on the cluster
+- Placeholder values in ArgoCD charts (cluster name, IRSA role ARNs, ECR URLs) need to be populated from Terraform outputs before deploying
+- Current state: all AWS resources for tasks 1–3 ready, Docker images for task 5 ready, ArgoCD charts for task 6 ready
 - To destroy all resources: `cd infra/non-prod/ap-southeast-1 && terragrunt run --all destroy`
+
+---
+
+## Task 5 — Docker Images
+
+### Verify
+
+```bash
+# Build de-team base image (from Application Code Repo)
+cd dbt-dagster-project/de-team
+docker build -f Dockerfile.base -t de-team-base:test .
+
+# Build de-team code image
+docker build -f Dockerfile.code --build-arg BASE_IMAGE=de-team-base:test -t de-team-code:test .
+
+# Build sales-team base image
+cd dbt-dagster-project/sales-team
+docker build -f Dockerfile.base -t sales-team-base:test .
+
+# Build sales-team code image
+docker build -f Dockerfile.code --build-arg BASE_IMAGE=sales-team-base:test -t sales-team-code:test .
+
+# Validate docker-image Terraform module
+cd infra/modules/docker-image
+terraform init
+terraform validate
+```
+
+| Check | Expected |
+|---|---|
+| de-team Dockerfile.base | Builds successfully from `public.ecr.aws/emr-on-eks/spark/emr-7.13.0` |
+| de-team Dockerfile.code | Builds in <30s from base image, COPY only |
+| sales-team Dockerfile.base | Builds successfully from `python:3.10-slim` |
+| sales-team Dockerfile.code | Builds in <30s from base image, COPY only |
+| docker-image module | `terraform validate` passes |
+| de-team base packages | dbt-core, dbt-spark, dagster-pipes, boto3, Iceberg JAR |
+| sales-team base packages | dbt-core, dbt-athena-community, dagster, dagster-aws, dagster-dbt, boto3 |
+
+### Status
+
+- [ ] de-team Dockerfile.base builds
+- [ ] de-team Dockerfile.code builds (<30s)
+- [ ] sales-team Dockerfile.base builds
+- [ ] sales-team Dockerfile.code builds (<30s)
+- [ ] docker-image Terraform module validates
+
+---
+
+## Task 6 — ArgoCD App-of-Apps
+
+### Verify
+
+```bash
+# Validate App-of-Apps root chart (no dependencies needed)
+helm template argocd/apps/
+
+# Validate Karpenter chart
+helm dependency build argocd/karpenter/
+helm template argocd/karpenter/
+
+# Validate Dagster chart
+helm dependency build argocd/dagster/
+helm template argocd/dagster/
+
+# Check namespace manifests are valid YAML
+kubectl apply --dry-run=client -f argocd/namespaces/dagster-ns.yaml
+kubectl apply --dry-run=client -f argocd/namespaces/spark-ns.yaml
+
+# Check bootstrap Application CRD
+kubectl apply --dry-run=client -f argocd/app-of-apps.yaml
+```
+
+| Check | Expected |
+|---|---|
+| `helm template argocd/apps/` | Renders 1 AppProject + 3 Applications (namespaces, karpenter, dagster) |
+| `helm template argocd/karpenter/` | Renders Karpenter chart + 2 NodePools + 1 EC2NodeClass |
+| `helm template argocd/dagster/` | Renders Dagster chart with 2 user code deployments |
+| Sync waves | namespaces (1) → karpenter (2) → dagster (3) |
+| AppProject namespaces | `dagster`, `spark`, `kube-system`, `argocd` |
+| Karpenter spark-executors | Spot, m5.xlarge/2xlarge + m6i.xlarge/2xlarge, taint, 300s consolidate |
+| Karpenter spark-drivers | On-Demand, m5.large + m6i.large, 120s consolidate |
+| Dagster de-team | Service account `dagster-de-team` with IRSA annotation |
+| Dagster sales-team | Service account `dagster-sales-team` with IRSA annotation |
+| Bootstrap CRD | Points to `argocd/apps` path, auto-sync enabled |
+
+### Status
+
+- [ ] App-of-Apps root chart renders correctly
+- [ ] Karpenter chart renders correctly
+- [ ] Dagster chart renders correctly
+- [ ] Namespace manifests valid
+- [ ] Bootstrap Application CRD valid

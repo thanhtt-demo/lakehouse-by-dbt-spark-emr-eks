@@ -1,0 +1,18 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# KARPENTER HELM CHART
+# Umbrella chart wrapping the official Karpenter Helm chart as a dependency.
+# Includes custom templates for NodePool and EC2NodeClass CRDs.
+# Deployed by ArgoCD (sync-wave: 2).
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v2
+name: karpenter
+description: Karpenter autoscaler for EKS — includes official chart + NodePool/EC2NodeClass CRDs
+type: application
+version: 1.0.0
+appVersion: "1.1.1"
+
+dependencies:
+  - name: karpenter
+    version: "1.1.1"
+    repository: "oci://public.ecr.aws/karpenter"

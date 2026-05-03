@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.appProject.name }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: {{ .Values.appProject.description | quote }}
+
+  # Source repositories allowed for this project
+  sourceRepos:
+    {{- range .Values.appProject.sourceRepos }}
+    - {{ . | quote }}
+    {{- end }}
+
+  # Destination namespaces and clusters allowed
+  destinations:
+    {{- range .Values.appProject.destinations }}
+    - namespace: {{ .namespace | quote }}
+      server: {{ .server | quote }}
+    {{- end }}
+
+  # Cluster-scoped resources this project can manage
+  {{- if .Values.appProject.clusterResourceWhitelist }}
+  clusterResourceWhitelist:
+    {{- range .Values.appProject.clusterResourceWhitelist }}
+    - group: {{ .group | quote }}
+      kind: {{ .kind | quote }}
+    {{- end }}
+  {{- end }}
+
+  # Allow all namespaced resources by default
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

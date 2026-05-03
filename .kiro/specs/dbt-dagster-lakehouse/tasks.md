@@ -102,23 +102,23 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
   - Chạy `terragrunt graph-dependencies` để xác nhận dependency graph đúng
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Tạo Docker Images — Base Images và Code Images
-  - [ ] 5.1 Tạo Dockerfile.base cho de-team
+- [x] 5. Tạo Docker Images — Base Images và Code Images
+  - [x] 5.1 Tạo Dockerfile.base cho de-team
     - Tạo `dbt-dagster-project/de-team/Dockerfile.base`:
-      - FROM EMR Spark base image (public.ecr.aws/emr-on-eks/spark/emr-7.5.0)
+      - FROM EMR Spark base image (public.ecr.aws/emr-on-eks/spark/emr-7.13.0)
       - Cài Python 3.10, dbt-core, dbt-spark, dagster-pipes, boto3
       - COPY Iceberg Spark runtime JAR vào `/opt/spark/jars/`
       - Không chứa code project
     - _Requirements: 8.1, 8.2, 10.6, 18.4_
 
-  - [ ] 5.2 Tạo Dockerfile.base cho sales-team
+  - [x] 5.2 Tạo Dockerfile.base cho sales-team
     - Tạo `dbt-dagster-project/sales-team/Dockerfile.base`:
       - FROM python:3.10-slim
       - Cài dbt-core, dbt-athena-community, dagster, dagster-aws, boto3
       - Dependencies KHÁC de-team (không cần Spark)
     - _Requirements: 8.1, 18.5_
 
-  - [ ] 5.3 Tạo Dockerfile.code cho de-team
+  - [x] 5.3 Tạo Dockerfile.code cho de-team
     - Tạo `dbt-dagster-project/de-team/Dockerfile.code`:
       - FROM de-team-base:latest
       - COPY dbt_project/ /app/dbt_project/
@@ -127,7 +127,7 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
       - Không cài thêm packages — build <30s
     - _Requirements: 8.3, 8.4, 8.5_
 
-  - [ ] 5.4 Tạo Dockerfile.code cho sales-team
+  - [x] 5.4 Tạo Dockerfile.code cho sales-team
     - Tạo `dbt-dagster-project/sales-team/Dockerfile.code`:
       - FROM sales-team-base:latest
       - COPY dbt_project/ /app/dbt_project/
@@ -135,22 +135,22 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
       - Không cài thêm packages — build <30s
     - _Requirements: 8.3, 8.4, 8.5_
 
-  - [ ] 5.5 Tạo Terraform module docker-image (`infra/modules/docker-image/`)
+  - [x] 5.5 Tạo Terraform module docker-image (`infra/modules/docker-image/`)
     - Tạo module sử dụng `null_resource` + `local-exec` provisioner để build và push Base_Image lên ECR
     - Chỉ rebuild khi thay đổi dependency versions (trigger bằng hash của Dockerfile.base)
     - Tạo `variables.tf`: dockerfile_path, ecr_repository_url, image_tag
     - Dependency: ECR module
     - _Requirements: 8.2_
 
-- [ ] 6. Thiết lập ArgoCD App-of-Apps
-  - [ ] 6.1 Tạo ArgoCD App-of-Apps root Helm chart
+- [x] 6. Thiết lập ArgoCD App-of-Apps
+  - [x] 6.1 Tạo ArgoCD App-of-Apps root Helm chart
     - Tạo `argocd/apps/Chart.yaml` với metadata
     - Tạo `argocd/apps/values.yaml` — single source of truth cho tất cả applications: namespaces (syncWave 1), karpenter (syncWave 2), dagster (syncWave 3)
     - Tạo `argocd/apps/templates/applications.yaml` — loop over values → tạo ArgoCD Application CRDs
     - Tạo `argocd/apps/templates/project.yaml` — ArgoCD AppProject với quyền truy cập namespaces `dagster`, `spark`, `kube-system`
     - _Requirements: 14.2, 16.1, 16.2, 16.3, 16.4_
 
-  - [ ] 6.2 Tạo Karpenter Helm chart và CRDs (managed by ArgoCD)
+  - [x] 6.2 Tạo Karpenter Helm chart và CRDs (managed by ArgoCD)
     - Tạo `argocd/karpenter/Chart.yaml` với dependency: official Karpenter Helm chart (`oci://public.ecr.aws/karpenter/karpenter`)
     - Tạo `argocd/karpenter/values.yaml` với cấu hình:
       - nodeSelector: `karpenter.sh/controller: "true"` (chạy trên system nodes)
@@ -160,7 +160,7 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
     - Tạo `argocd/karpenter/templates/nodepool-spark-drivers.yaml` — NodePool On-Demand (m5.large, m6i.large), consolidateAfter 120s
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 6.3 Tạo Dagster umbrella Helm chart
+  - [x] 6.3 Tạo Dagster umbrella Helm chart
     - Tạo `argocd/dagster/Chart.yaml` với dependency: official dagster Helm chart
     - Tạo `argocd/dagster/values.yaml` với cấu hình:
       - dagsterWebserver (replicaCount: 1)
@@ -168,7 +168,7 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
       - dagsterUserDeployments: 2 entries (de-team, sales-team) — mỗi entry có image repo/tag, dagsterApiGrpcArgs, port, resources, serviceAccount với IRSA annotation
     - _Requirements: 15.1, 15.2, 15.3, 15.5, 18.8_
 
-  - [ ] 6.4 Tạo Namespace manifests và bootstrap file
+  - [x] 6.4 Tạo Namespace manifests và bootstrap file
     - Tạo `argocd/namespaces/dagster-ns.yaml` và `argocd/namespaces/spark-ns.yaml`
     - Tạo `argocd/app-of-apps.yaml` — bootstrap Application CRD (apply once để deploy everything)
     - _Requirements: 14.3, 14.4_

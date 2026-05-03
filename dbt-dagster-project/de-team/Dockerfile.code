@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# CODE IMAGE — de-team
+# Built FROM Base_Image — only COPYs project code (dbt, Dagster, Spark entrypoint).
+# No additional packages installed → build completes in <30s, no new vulnerabilities introduced.
+# CI/CD rebuilds this image on every code change (tag: git commit SHA).
+# ---------------------------------------------------------------------------------------------------------------------
+
+ARG BASE_IMAGE=de-team-base:latest
+FROM ${BASE_IMAGE}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# LABELS
+# ---------------------------------------------------------------------------------------------------------------------
+LABEL maintainer="de-team"
+LABEL description="Code image for de-team: dbt project + Dagster project + Spark entrypoint"
+LABEL org.opencontainers.image.source="dbt-dagster-project/de-team"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# COPY PROJECT CODE
+# Order: dbt_project → spark_entrypoint → dagster_project
+# entryPoint for EMR spark-submit: local:///app/entrypoint.py
+# ---------------------------------------------------------------------------------------------------------------------
+COPY dbt_project/ /app/dbt_project/
+COPY spark_entrypoint/entrypoint.py /app/entrypoint.py
+COPY dagster_project/ /app/dagster_project/
+
+# Use hadoop user (matching base image — EMR on EKS default)
+USER hadoop

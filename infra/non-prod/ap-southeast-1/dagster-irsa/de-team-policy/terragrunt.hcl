@@ -19,7 +19,7 @@ dependency "s3_pipes" {
   mock_outputs = {
     s3_bucket_arn = "arn:aws:s3:::mock-pipes"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 dependency "s3_spark_logs" {
@@ -28,7 +28,7 @@ dependency "s3_spark_logs" {
   mock_outputs = {
     s3_bucket_arn = "arn:aws:s3:::mock-spark-logs"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 dependency "emr" {
@@ -37,7 +37,7 @@ dependency "emr" {
   mock_outputs = {
     virtual_cluster_arn = "arn:aws:emr-containers:ap-southeast-1:123456789012:/virtualclusters/mock"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 inputs = {

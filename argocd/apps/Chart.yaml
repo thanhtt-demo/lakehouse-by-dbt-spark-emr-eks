@@ -1,0 +1,6 @@
+apiVersion: v2
+name: app-of-apps
+description: Root App-of-Apps Helm chart — manages all ArgoCD Applications for dbt-dagster-lakehouse platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

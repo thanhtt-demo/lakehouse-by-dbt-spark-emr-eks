@@ -1,0 +1,18 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DAGSTER UMBRELLA HELM CHART
+# Wraps the official Dagster Helm chart as a dependency.
+# Configures webserver, daemon, and 2 user code deployments (de-team, sales-team).
+# Deployed by ArgoCD (sync-wave: 3).
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v2
+name: dagster
+description: Dagster orchestrator — umbrella chart wrapping official Dagster Helm chart with 2 code locations
+type: application
+version: 1.0.0
+appVersion: "1.9.6"
+
+dependencies:
+  - name: dagster
+    version: "1.9.6"
+    repository: "https://dagster-io.github.io/helm"

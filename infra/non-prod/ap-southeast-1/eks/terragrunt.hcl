@@ -24,7 +24,7 @@ dependency "vpc" {
     vpc_id             = "vpc-mock-12345"
     private_subnet_ids = ["subnet-mock-1", "subnet-mock-2", "subnet-mock-3"]
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 # Pass VPC outputs as inputs to the EKS module

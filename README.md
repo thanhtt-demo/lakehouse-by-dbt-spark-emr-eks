@@ -18,7 +18,7 @@ A data lakehouse platform integrating dbt with Dagster on AWS. Each dbt model ma
 
 ## Repository Structure
 
-This is the **Infrastructure repo** — contains Terraform modules and Terragrunt configurations.
+This is the **Infrastructure repo** — contains Terraform modules, Terragrunt configurations, and ArgoCD Helm charts.
 
 ```
 infra/
@@ -36,7 +36,8 @@ infra/
 ├── modules/                        # Terraform modules (local only)
 │   ├── vpc/                        # ✅ VPC module
 │   ├── ecr/                        # ✅ ECR wrapper (4 repos via community module)
-│   └── glue/                       # ✅ Glue module (Data Catalog databases)
+│   ├── glue/                       # ✅ Glue module (Data Catalog databases)
+│   └── docker-image/               # ✅ Build & push Base Images to ECR
 └── non-prod/                       # Live environment
     └── ap-southeast-1/
         ├── env.hcl
@@ -55,6 +56,28 @@ infra/
         │   ├── sales-team-policy/
         │   └── sales-team-role/
         └── glue/                   # ✅ Glue Data Catalog databases
+
+argocd/                              # ✅ ArgoCD App-of-Apps (Helm charts + K8s manifests)
+├── app-of-apps.yaml                 # ✅ Bootstrap Application CRD (kubectl apply once)
+├── apps/                            # ✅ Root App-of-Apps Helm chart
+│   ├── Chart.yaml
+│   ├── values.yaml                  #   Single source of truth for all applications
+│   └── templates/
+│       ├── applications.yaml        #   Loop over values → ArgoCD Application CRDs
+│       └── project.yaml             #   ArgoCD AppProject
+├── karpenter/                       # ✅ Karpenter umbrella Helm chart (sync-wave: 2)
+│   ├── Chart.yaml                   #   Dependency: official Karpenter chart v1.1.1
+│   ├── values.yaml
+│   └── templates/
+│       ├── ec2nodeclass.yaml        #   EC2NodeClass (AL2023, tag-based discovery)
+│       ├── nodepool-spark-drivers.yaml    # On-Demand (m5.large, m6i.large)
+│       └── nodepool-spark-executors.yaml  # Spot (m5.xlarge/2xlarge, m6i.xlarge/2xlarge)
+├── dagster/                         # ✅ Dagster umbrella Helm chart (sync-wave: 3)
+│   ├── Chart.yaml                   #   Dependency: official Dagster chart v1.9.6
+│   └── values.yaml                  #   2 code locations: de-team, sales-team
+└── namespaces/                      # ✅ Namespace manifests (sync-wave: 1)
+    ├── dagster-ns.yaml
+    └── spark-ns.yaml
 ```
 
 ## Modules
@@ -142,9 +165,52 @@ Local module creating Glue Data Catalog databases for dbt schemas (staging, inte
 | `database_names` | Map of schema name → Glue database name |
 | `catalog_id` | Glue Catalog ID (AWS account ID) |
 
-### 🔲 Planned Modules
+### ✅ Docker Image (`infra/modules/docker-image/`)
 
-- **Docker Image** — Build & push Base Images
+Builds and pushes Base Images to ECR using `null_resource` + `local-exec` provisioner. Only rebuilds when the Dockerfile content changes (triggered by `filemd5` hash). Extracts ECR registry and AWS region from the repository URL automatically.
+
+| Variable | Description |
+|---|---|
+| `dockerfile_path` | Path to the Dockerfile.base to build |
+| `ecr_repository_url` | ECR repository URL to push to |
+| `image_tag` | Tag for the Docker image (default: `latest`) |
+| `docker_context` | Docker build context directory |
+
+| Output | Description |
+|---|---|
+| `image_uri` | Full image URI (ecr_url:tag) |
+| `dockerfile_hash` | MD5 hash of the Dockerfile for change detection |
+
+### ✅ ArgoCD App-of-Apps (`argocd/`)
+
+Helm charts and Kubernetes manifests for ArgoCD GitOps deployment. Uses the App-of-Apps pattern with sync waves for ordered deployment.
+
+| Component | Path | Sync Wave | Description |
+|---|---|---|---|
+| Bootstrap | `app-of-apps.yaml` | — | `kubectl apply -f` once to deploy everything |
+| Root chart | `apps/` | — | Loops over `values.yaml` to create ArgoCD Application CRDs |
+| Namespaces | `namespaces/` | 1 | `dagster` and `spark` namespace manifests |
+| Karpenter | `karpenter/` | 2 | Official chart v1.1.1 + NodePool/EC2NodeClass CRDs |
+| Dagster | `dagster/` | 3 | Official chart v1.9.6 + 2 user code deployments |
+
+Karpenter NodePools:
+- `spark-executors`: Spot (m5.xlarge/2xlarge, m6i.xlarge/2xlarge), taint `spark-role=executor:NoSchedule`, consolidateAfter 300s
+- `spark-drivers`: On-Demand (m5.large, m6i.large), consolidateAfter 120s
+
+Dagster user code deployments:
+- `de-team`: dbt-spark, PipesEMRContainersClient, service account with IRSA
+- `sales-team`: dbt-athena, service account with IRSA
+
+### Docker Images (Application Code Repo)
+
+Four Dockerfiles following the Base Image + Code Image pattern:
+
+| File | Base | Contents |
+|---|---|---|
+| `de-team/Dockerfile.base` | `public.ecr.aws/emr-on-eks/spark/emr-7.13.0` | Spark + dbt-spark + dagster-pipes + Iceberg JAR |
+| `de-team/Dockerfile.code` | `de-team-base:latest` | COPY dbt_project + spark_entrypoint + dagster_project |
+| `sales-team/Dockerfile.base` | `python:3.10-slim` | dbt-athena + dagster + dagster-aws + dagster-dbt |
+| `sales-team/Dockerfile.code` | `sales-team-base:latest` | COPY dbt_project + dagster_project |
 
 ## Terragrunt Usage
 
@@ -172,6 +238,42 @@ terragrunt graph-dependencies
 # Destroy all resources (stop billing)
 cd infra/non-prod/ap-southeast-1
 terragrunt run --all destroy
+```
+
+## Docker Images
+
+```bash
+# Build de-team base image
+cd dbt-dagster-project/de-team
+docker build -f Dockerfile.base -t de-team-base:latest .
+
+# Build de-team code image
+docker build -f Dockerfile.code -t de-team-code:latest .
+
+# Build sales-team base image
+cd dbt-dagster-project/sales-team
+docker build -f Dockerfile.base -t sales-team-base:latest .
+
+# Build sales-team code image
+docker build -f Dockerfile.code -t sales-team-code:latest .
+```
+
+## ArgoCD
+
+```bash
+# Bootstrap — apply once to deploy everything
+kubectl apply -f argocd/app-of-apps.yaml
+
+# Validate App-of-Apps root chart
+helm template argocd/apps/
+
+# Validate Karpenter chart (requires helm dependency build first)
+helm dependency build argocd/karpenter/
+helm template argocd/karpenter/
+
+# Validate Dagster chart (requires helm dependency build first)
+helm dependency build argocd/dagster/
+helm template argocd/dagster/
 ```
 
 ## Related Repositories

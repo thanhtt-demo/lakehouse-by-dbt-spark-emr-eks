@@ -22,7 +22,7 @@ dependency "eks" {
   mock_outputs = {
     cluster_name = "mock-eks-cluster"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 # Pass EKS cluster name to the Karpenter submodule
