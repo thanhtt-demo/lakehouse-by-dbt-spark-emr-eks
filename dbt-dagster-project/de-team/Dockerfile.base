@@ -16,15 +16,21 @@ USER root
 # ---------------------------------------------------------------------------------------------------------------------
 RUN pip3 install --no-cache-dir --ignore-installed --upgrade pip
 
+RUN yum install -y git && yum clean all
+
 # ---------------------------------------------------------------------------------------------------------------------
 # INSTALL PYTHON PACKAGES
 # dbt-core + dbt-spark: dbt framework with Spark adapter (method: session)
 # No extras needed — EMR base image already has PySpark, and we use session method (not PyHive/Thrift)
+# dagster + dagster-aws + dagster-dbt: Dagster orchestrator + AWS + dbt integrations (for user code pod)
 # dagster-pipes: PipesS3MessageWriter for Dagster Pipes protocol (runs inside Spark job)
 # boto3: AWS SDK for PipesS3MessageWriter S3 operations
-# Note: EMR 7.x ships Python 3.9 — dbt-spark 1.10+ and dagster-pipes 1.13+ require Python>=3.10,
+# Note: EMR 7.x ships Python 3.9 — dagster 1.13+ requires Python>=3.10,
 # so all packages are pinned to the latest versions supporting Python 3.9
+# GIT_PYTHON_REFRESH=quiet suppresses git warning when running as Spark entrypoint (no git needed)
 # ---------------------------------------------------------------------------------------------------------------------
+ENV GIT_PYTHON_REFRESH=quiet
+
 RUN pip3 install --no-cache-dir --ignore-installed \
     "dbt-core>=1.9,<1.10" \
     "dbt-spark>=1.9,<1.10" \
