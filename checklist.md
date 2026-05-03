@@ -611,10 +611,10 @@ $env:PYTHONPATH = "dbt-dagster-project/sales-team"; python -c "from dagster_proj
 
 ```bash
 # Validate workflow YAML syntax
-python -c "import yaml; yaml.safe_load(open('dbt-dagster-project/.github/workflows/ci-cd.yml'))" && echo "ci-cd.yml OK"
+python -c "import yaml; yaml.safe_load(open('.github/workflows/ci-cd.yml'))" && echo "ci-cd.yml OK"
 
 # Check workflow file exists
-ls dbt-dagster-project/.github/workflows/ci-cd.yml
+ls .github/workflows/ci-cd.yml
 ```
 
 | Check | Expected |

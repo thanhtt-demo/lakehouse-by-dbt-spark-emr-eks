@@ -21,6 +21,10 @@ A data lakehouse platform integrating dbt with Dagster on AWS. Each dbt model ma
 This is the **Infrastructure repo** — contains Terraform modules, Terragrunt configurations, and ArgoCD Helm charts.
 
 ```
+.github/
+└── workflows/
+    └── ci-cd.yml                    # ✅ GitHub Actions CI/CD pipeline
+
 infra/
 ├── root.hcl                        # Root config: S3 remote state, native locking, AWS provider
 ├── _envcommon/                     # Shared Terragrunt configs
@@ -85,9 +89,6 @@ argocd/                              # ✅ ArgoCD App-of-Apps (Helm charts + K8s
     └── spark-ns.yaml
 
 dbt-dagster-project/                     # ✅ dbt Projects + Dagster Application Code
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml                    # ✅ GitHub Actions CI/CD pipeline
 ├── de-team/
 │   ├── Dockerfile.base
 │   ├── Dockerfile.code
@@ -307,7 +308,7 @@ Complete Dagster code location for the sales-team, using dbt-athena assets that 
 | Resources | `resources/__init__.py` | `DbtCliResource` factory for dbt-athena |
 | Definitions | `definitions.py` | Entry point registering all assets and resources |
 
-### ✅ CI/CD Pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`)
+### ✅ CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
 
 GitHub Actions workflow that builds Code Images and updates ArgoCD on push to main. Only rebuilds the code location(s) whose files changed (path filters via `dorny/paths-filter`).
 
