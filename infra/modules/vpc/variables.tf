@@ -37,3 +37,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "cluster_name" {
+  description = "EKS cluster name — used for karpenter.sh/discovery tag on private subnets"
+  type        = string
+  default     = "lakehouse-at-scale-eks"
+}

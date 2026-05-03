@@ -70,7 +70,7 @@ dagster:
           create: true
           name: dagster-de-team
           annotations:
-            eks.amazonaws.com/role-arn: "exit status 1"
+            eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260502235436821500000001"
 
       # -------------------------------------------------------------------------
       # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
@@ -100,4 +100,4 @@ dagster:
           create: true
           name: dagster-sales-team
           annotations:
-            eks.amazonaws.com/role-arn: "exit status 1"
+            eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-sales-team-20260502235350188400000001"

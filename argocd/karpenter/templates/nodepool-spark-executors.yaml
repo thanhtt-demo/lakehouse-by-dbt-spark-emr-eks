@@ -58,15 +58,15 @@ kind: EC2NodeClass
 metadata:
   name: spark-executors
 spec:
-  role: "KarpenterNodeRole-exit status 1"
+  role: "lakehouse-at-scale-karpenter-node"
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "exit status 1"
+        karpenter.sh/discovery: "lakehouse-at-scale-eks"
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "exit status 1"
+        karpenter.sh/discovery: "lakehouse-at-scale-eks"
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
