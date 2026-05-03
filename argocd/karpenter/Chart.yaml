@@ -10,9 +10,9 @@ name: karpenter
 description: Karpenter autoscaler for EKS — includes official chart + NodePool/EC2NodeClass CRDs
 type: application
 version: 1.0.0
-appVersion: "1.1.1"
+appVersion: "1.12.0"
 
 dependencies:
   - name: karpenter
-    version: "1.1.1"
+    version: "1.12.0"
     repository: "oci://public.ecr.aws/karpenter"

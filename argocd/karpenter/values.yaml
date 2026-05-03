@@ -35,5 +35,5 @@ karpenter:
         cpu: "1"
         memory: 1Gi
 
-  # Replicas for HA
-  replicas: 2
+  # Replicas — 1 for non-prod (2 nodes not enough for anti-affinity with replicas: 2)
+  replicas: 1
