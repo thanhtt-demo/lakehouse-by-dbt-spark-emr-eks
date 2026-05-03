@@ -80,6 +80,14 @@ dagster:
             value: "ap-southeast-1"
           - name: PYTHONPATH
             value: "/app"
+          - name: DAGSTER_HOME
+            value: "/home/hadoop/dagster_home"
+          - name: EMR_VIRTUAL_CLUSTER_ID
+            value: "axns0wditvae14doyiq3lleba"
+          - name: EMR_EXECUTION_ROLE_ARN
+            value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260502235355283900000001"
+          - name: SPARK_CODE_IMAGE_URI
+            value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
         serviceAccount:
           create: true
           name: dagster-de-team
