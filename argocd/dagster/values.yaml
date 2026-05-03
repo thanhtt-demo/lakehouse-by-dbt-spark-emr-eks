@@ -58,7 +58,7 @@ dagster:
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-          tag: "cf008307"
+          tag: "5da089cd"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
