@@ -22,7 +22,7 @@ applications:
   - name: namespaces
     namespace: argocd
     path: argocd/namespaces
-    targetNamespace: default
+    targetNamespace: argocd
     syncWave: "1"
     helm:
       enabled: false
