@@ -61,8 +61,8 @@ dagster:
           tag: "5b1e835a"
           pullPolicy: Always
         dagsterApiGrpcArgs:
-          - "--python-file"
-          - "/app/dagster_project/definitions.py"
+          - "--module-name"
+          - "dagster_project.definitions"
         port: 3030
         nodeSelector:
           role: workload
@@ -78,6 +78,8 @@ dagster:
             value: "prod"
           - name: AWS_REGION
             value: "ap-southeast-1"
+          - name: PYTHONPATH
+            value: "/app"
         serviceAccount:
           create: true
           name: dagster-de-team
@@ -94,8 +96,8 @@ dagster:
           tag: "5b1e835a"
           pullPolicy: Always
         dagsterApiGrpcArgs:
-          - "--python-file"
-          - "/app/dagster_project/definitions.py"
+          - "--module-name"
+          - "dagster_project.definitions"
         port: 3030
         nodeSelector:
           role: workload
@@ -111,6 +113,8 @@ dagster:
             value: "prod"
           - name: AWS_REGION
             value: "ap-southeast-1"
+          - name: PYTHONPATH
+            value: "/app"
         serviceAccount:
           create: true
           name: dagster-sales-team
