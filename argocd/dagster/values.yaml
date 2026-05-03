@@ -58,7 +58,7 @@ dagster:
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-          tag: "5b1e835a"
+          tag: "92355db0"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
@@ -85,11 +85,11 @@ dagster:
           name: dagster-de-team
           annotations:
             eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260502235436821500000001"
-      # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
-
       # -------------------------------------------------------------------------
       - name: sales-team
         # -------------------------------------------------------------------------
+
+        # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
 
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/sales-team-code"
