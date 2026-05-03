@@ -5,7 +5,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 from dataclasses import dataclass, field, asdict
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import dagster as dg
 
@@ -15,7 +15,7 @@ import dagster as dg
 # These are always included in every Spark job unless explicitly overridden.
 # ---------------------------------------------------------------------------------------------------------------------
 
-DEFAULT_SPARK_PROPERTIES: dict[str, str] = {
+DEFAULT_SPARK_PROPERTIES: Dict[str, str] = {
     "spark.sql.catalog.glue_catalog": "org.apache.iceberg.spark.SparkCatalog",
     "spark.sql.catalog.glue_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
     "spark.sql.catalog.glue_catalog.warehouse": "s3://lakehouse-data-lake/warehouse/",
@@ -47,7 +47,7 @@ class SparkJobConfig:
     """Complete configuration for a Spark job (resources + Spark properties)."""
 
     resources: SparkResourceConfig = field(default_factory=SparkResourceConfig)
-    spark_properties: dict[str, str] = field(default_factory=dict)
+    spark_properties: Dict[str, str] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ class SparkConfigManager(dg.ConfigurableResource):
     default_executor_cpu: str = "1"
     default_executor_memory: str = "4g"
     default_executor_instances: int = 2
-    default_spark_properties: dict[str, str] = {}
+    default_spark_properties: Dict[str, str] = {}
 
     @property
     def default_config(self) -> SparkJobConfig:
@@ -96,7 +96,7 @@ class SparkConfigManager(dg.ConfigurableResource):
             spark_properties={**self.default_spark_properties},
         )
 
-    def merge_config(self, model_meta: dict | None) -> SparkJobConfig:
+    def merge_config(self, model_meta: Optional[dict]) -> SparkJobConfig:
         """Merge model meta spark_config with default.
 
         Args:
@@ -153,7 +153,7 @@ class SparkConfigManager(dg.ConfigurableResource):
         res = config.resources
 
         # Build --conf flags for sparkSubmitParameters
-        conf_pairs: list[str] = [
+        conf_pairs: List[str] = [
             f"--conf spark.kubernetes.container.image={image_uri}",
             f"--conf spark.driver.cores={res.driver_cpu}",
             f"--conf spark.driver.memory={res.driver_memory}",

@@ -120,7 +120,7 @@ def _report_test_results(pipes, run_results: dict) -> None:
         )
 
 
-def _parse_run_results(path: str) -> dict | None:
+def _parse_run_results(path: str) -> Optional[dict]:
     """Parse dbt run_results.json if it exists."""
     try:
         with open(path) as f:

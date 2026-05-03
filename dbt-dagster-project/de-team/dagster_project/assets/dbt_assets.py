@@ -10,7 +10,7 @@ import json
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from dagster import EnvVar
 from dagster_aws.pipes import PipesEMRContainersClient
@@ -48,7 +48,7 @@ def get_parsed_manifest() -> dict:
         return json.load(f)
 
 
-def _find_model_in_manifest(model_name: str) -> dict | None:
+def _find_model_in_manifest(model_name: str) -> Optional[dict]:
     """Find a model node in the dbt manifest by name."""
     manifest = get_parsed_manifest()
     for _node_id, node in manifest.get("nodes", {}).items():
