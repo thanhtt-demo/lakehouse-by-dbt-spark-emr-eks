@@ -18,13 +18,14 @@ terraform {
 inputs = {
   name = "lakehouse-at-scale-emr-vc"
 
-  # Namespace where Spark jobs will run — managed by ArgoCD, not Terraform
+  # Namespace where Spark jobs will run — created here so EMR can register;
+  # ArgoCD will adopt it later via ServerSideApply / managed-by annotation
   namespace            = "spark"
-  create_namespace     = false
+  create_namespace     = true
 
   # IAM execution role for EMR Spark jobs
   create_iam_role      = true
-  iam_role_name        = "lakehouse-at-scale-emr-execution"
+  role_name            = "lakehouse-at-scale-emr-execution"
   iam_role_description = "IAM execution role for EMR on EKS Spark jobs"
 
   # CloudWatch log group for Spark driver/executor logs

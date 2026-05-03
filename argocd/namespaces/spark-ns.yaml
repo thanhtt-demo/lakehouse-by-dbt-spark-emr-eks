@@ -1,0 +1,13 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# SPARK NAMESPACE
+# Namespace for EMR on EKS Spark driver and executor pods.
+# Deployed by ArgoCD at sync-wave 1 (before application charts).
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spark
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: dbt-lakehouse

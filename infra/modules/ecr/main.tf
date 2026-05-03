@@ -14,6 +14,9 @@ module "ecr" {
 
   repository_image_tag_mutability = var.image_tag_mutability
 
+  # Allow terraform destroy to delete repos even when they contain images
+  repository_force_delete = true
+
   # Enable image scanning on push
   repository_image_scan_on_push = true
 

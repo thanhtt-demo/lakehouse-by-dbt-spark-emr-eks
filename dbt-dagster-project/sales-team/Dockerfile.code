@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# CODE IMAGE — sales-team
+# Built FROM Base_Image — only COPYs project code (dbt, Dagster).
+# No additional packages installed → build completes in <30s, no new vulnerabilities introduced.
+# CI/CD rebuilds this image on every code change (tag: git commit SHA).
+# Note: sales-team does NOT have spark_entrypoint — dbt runs via DbtCliResource directly on the
+# Dagster user code pod (no Spark/EMR needed). Queries execute on Amazon Athena.
+# ---------------------------------------------------------------------------------------------------------------------
+
+ARG BASE_IMAGE=sales-team-base:latest
+FROM ${BASE_IMAGE}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# LABELS
+# ---------------------------------------------------------------------------------------------------------------------
+LABEL maintainer="sales-team"
+LABEL description="Code image for sales-team: dbt project + Dagster project (dbt-athena, no Spark)"
+LABEL org.opencontainers.image.source="dbt-dagster-project/sales-team"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# COPY PROJECT CODE
+# Order: dbt_project → dagster_project
+# No spark_entrypoint — sales-team runs dbt via DbtCliResource on the user code pod.
+# ---------------------------------------------------------------------------------------------------------------------
+COPY dbt_project/ /app/dbt_project/
+COPY dagster_project/ /app/dagster_project/

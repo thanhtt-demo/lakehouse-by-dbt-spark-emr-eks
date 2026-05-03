@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# BOOTSTRAP APPLICATION — App-of-Apps
+# Apply this file once to deploy everything:
+#   kubectl apply -f argocd/app-of-apps.yaml
+#
+# This Application points to the argocd/apps/ Helm chart (root App-of-Apps chart).
+# ArgoCD will then create all child Applications defined in apps/values.yaml,
+# deploying them in sync-wave order: namespaces (1) → karpenter (2) → dagster (3).
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thanhtt-demo/lakehouse-by-dbt-spark-emr-eks.git
+    targetRevision: main
+    path: argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 3m

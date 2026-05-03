@@ -1,0 +1,77 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# APP-OF-APPS VALUES — Single source of truth for all ArgoCD Applications
+# Adding a new component only requires adding an entry here and pushing to Git.
+# ArgoCD auto-deploys via auto-sync.
+# ---------------------------------------------------------------------------------------------------------------------
+
+spec:
+  project: dbt-lakehouse
+  destination:
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://github.com/thanhtt-demo/lakehouse-by-dbt-spark-emr-eks.git
+    targetRevision: main
+
+# ---------------------------------------------------------------------------------------------------------------------
+# APPLICATIONS
+# Each entry creates an ArgoCD Application CRD via templates/applications.yaml.
+# Sync waves control deployment order: lower wave number deploys first.
+# ---------------------------------------------------------------------------------------------------------------------
+
+applications:
+  - name: namespaces
+    namespace: argocd
+    path: argocd/namespaces
+    targetNamespace: default
+    syncWave: "1"
+    helm:
+      enabled: false
+
+  - name: karpenter
+    namespace: argocd
+    path: argocd/karpenter
+    targetNamespace: kube-system
+    syncWave: "2"
+    helm:
+      enabled: true
+      valueFiles:
+        - values.yaml
+
+  - name: dagster
+    namespace: argocd
+    path: argocd/dagster
+    targetNamespace: dagster
+    syncWave: "3"
+    helm:
+      enabled: true
+      valueFiles:
+        - values.yaml
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ARGOCD APPPROJECT
+# Defines which namespaces and repos the project has access to.
+# ---------------------------------------------------------------------------------------------------------------------
+
+appProject:
+  name: dbt-lakehouse
+  description: "dbt Dagster Lakehouse platform — manages Dagster, Karpenter, and supporting services"
+  sourceRepos:
+    - "https://github.com/thanhtt-demo/lakehouse-by-dbt-spark-emr-eks.git"
+    - "https://public.ecr.aws/karpenter/*"
+    - "https://dagster-io.github.io/helm"
+  destinations:
+    - namespace: dagster
+      server: https://kubernetes.default.svc
+    - namespace: spark
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: karpenter.sh
+      kind: NodePool
+    - group: karpenter.k8s.aws
+      kind: EC2NodeClass

@@ -19,7 +19,7 @@ dependency "s3_data_lake" {
   mock_outputs = {
     s3_bucket_arn = "arn:aws:s3:::mock-data-lake"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 dependency "s3_spark_logs" {
@@ -28,7 +28,7 @@ dependency "s3_spark_logs" {
   mock_outputs = {
     s3_bucket_arn = "arn:aws:s3:::mock-spark-logs"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 inputs = {

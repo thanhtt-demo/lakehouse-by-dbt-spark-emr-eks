@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# KARPENTER VALUES
+# Configuration for the official Karpenter Helm chart (passed to dependency).
+# clusterName, clusterEndpoint, and interruptionQueue come from Terraform outputs.
+# NodePool and EC2NodeClass CRDs are hardcoded in templates/ — not driven by values.
+# ---------------------------------------------------------------------------------------------------------------------
+
+karpenter:
+  # Run Karpenter controller on system managed node group
+  nodeSelector:
+    karpenter.sh/controller: "true"
+
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+
+  # Karpenter settings — populated from Terraform outputs
+  settings:
+    clusterName: "exit status 1"
+    clusterEndpoint: "exit status 1"
+    interruptionQueue: "exit status 1"
+
+  # Service account — IAM role created by Terraform (task 2.3)
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "exit status 1"
+
+  # Controller resources
+  controller:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+  # Replicas for HA
+  replicas: 2

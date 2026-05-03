@@ -23,7 +23,7 @@ dependency "s3_data_lake" {
     s3_bucket_arn = "arn:aws:s3:::mock-data-lake"
     s3_bucket_id  = "mock-data-lake"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 # Pass S3 outputs to the Glue module

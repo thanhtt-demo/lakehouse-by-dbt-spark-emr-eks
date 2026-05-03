@@ -1,0 +1,13 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DAGSTER NAMESPACE
+# Namespace for Dagster webserver, daemon, and user code pods.
+# Deployed by ArgoCD at sync-wave 1 (before application charts).
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dagster
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: dbt-lakehouse

@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# BASE IMAGE — de-team
+# Contains: Apache Spark runtime (from EMR 7.x / Python 3.9), Python packages.
+# Iceberg JAR is already bundled in the EMR 7.x base image — no need to download separately.
+# Does NOT contain any project code.
+# Rebuild only when dependency versions change.
+# ---------------------------------------------------------------------------------------------------------------------
+
+FROM public.ecr.aws/emr-on-eks/spark/emr-7.13.0
+
+USER root
+
+# ---------------------------------------------------------------------------------------------------------------------
+# UPGRADE PIP
+# EMR base image may ship an older pip that cannot resolve newer PyPI packages.
+# ---------------------------------------------------------------------------------------------------------------------
+RUN pip3 install --no-cache-dir --ignore-installed --upgrade pip
+
+# ---------------------------------------------------------------------------------------------------------------------
+# INSTALL PYTHON PACKAGES
+# dbt-core + dbt-spark: dbt framework with Spark adapter (method: session)
+# No extras needed — EMR base image already has PySpark, and we use session method (not PyHive/Thrift)
+# dagster-pipes: PipesS3MessageWriter for Dagster Pipes protocol (runs inside Spark job)
+# boto3: AWS SDK for PipesS3MessageWriter S3 operations
+# Note: EMR 7.x ships Python 3.9 — dbt-spark 1.10+ and dagster-pipes 1.13+ require Python>=3.10,
+# so all packages are pinned to the latest versions supporting Python 3.9
+# ---------------------------------------------------------------------------------------------------------------------
+RUN pip3 install --no-cache-dir \
+    "dbt-core>=1.9,<1.10" \
+    "dbt-spark>=1.9,<1.10" \
+    "dagster-pipes>=1.12,<1.13" \
+    "boto3>=1.34,<2.0"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ICEBERG SPARK RUNTIME JAR
+# NOT needed — EMR on EKS 7.x images already bundle Apache Iceberg (1.6.1-amzn-0 in emr-7.5.0).
+# The JAR is pre-installed at /usr/share/aws/iceberg/lib/ in the EMR base image.
+# See: https://docs.aws.amazon.com/emr/latest/EMR-on-EKS-DevelopmentGuide/emr-eks-7.5.0.html
+# ---------------------------------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------------------------------
+# LABELS
+# ---------------------------------------------------------------------------------------------------------------------
+LABEL maintainer="de-team"
+LABEL description="Base image for de-team: EMR Spark + dbt-spark + dagster-pipes + Iceberg"
+LABEL org.opencontainers.image.source="dbt-dagster-project/de-team"
+
+# Switch back to default EMR user
+USER hadoop

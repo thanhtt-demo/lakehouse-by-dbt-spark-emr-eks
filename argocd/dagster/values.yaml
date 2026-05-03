@@ -1,0 +1,103 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DAGSTER VALUES
+# Configuration for the official Dagster Helm chart (passed to dependency).
+# 2 user code deployments: de-team (dbt-spark + EMR on EKS) and sales-team (dbt-athena).
+# Each code location has its own image, service account (IRSA), and resource limits.
+# Image repository URLs and IRSA role ARNs are placeholders — populated from Terraform outputs.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# -- Official Dagster chart values (passed to dependency)
+dagster:
+
+  # ---------------------------------------------------------------------------
+  # DAGSTER WEBSERVER
+  # ---------------------------------------------------------------------------
+  dagsterWebserver:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  # ---------------------------------------------------------------------------
+  # DAGSTER DAEMON
+  # ---------------------------------------------------------------------------
+  dagsterDaemon:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  # ---------------------------------------------------------------------------
+  # USER CODE DEPLOYMENTS — 2 code locations (de-team, sales-team)
+  # Each entry runs as a separate gRPC server pod with its own image and service account.
+  # ---------------------------------------------------------------------------
+  dagsterUserDeployments:
+    enabled: true
+    deployments:
+      # -------------------------------------------------------------------------
+      # DE-TEAM — dbt-spark, submits Spark jobs to EMR on EKS via PipesEMRContainersClient
+      # -------------------------------------------------------------------------
+      - name: de-team
+        image:
+          repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/de-team-code"
+          tag: "latest"
+          pullPolicy: Always
+        dagsterApiGrpcArgs:
+          - "--python-file"
+          - "/app/dagster_project/definitions.py"
+        port: 3030
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        envVars:
+          - name: DAGSTER_ENV
+            value: "prod"
+          - name: AWS_REGION
+            value: "ap-southeast-1"
+        serviceAccount:
+          create: true
+          name: dagster-de-team
+          annotations:
+            eks.amazonaws.com/role-arn: "exit status 1"
+
+      # -------------------------------------------------------------------------
+      # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
+      # -------------------------------------------------------------------------
+      - name: sales-team
+        image:
+          repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/sales-team-code"
+          tag: "latest"
+          pullPolicy: Always
+        dagsterApiGrpcArgs:
+          - "--python-file"
+          - "/app/dagster_project/definitions.py"
+        port: 3030
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        envVars:
+          - name: DAGSTER_ENV
+            value: "prod"
+          - name: AWS_REGION
+            value: "ap-southeast-1"
+        serviceAccount:
+          create: true
+          name: dagster-sales-team
+          annotations:
+            eks.amazonaws.com/role-arn: "exit status 1"

@@ -1,0 +1,75 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# NODEPOOL: SPARK EXECUTORS
+# Provisions Spot instances for Spark executor pods.
+# Taint: spark-role=executor:NoSchedule — only pods with matching toleration schedule here.
+# Instance types: m5.xlarge/2xlarge, m6i.xlarge/2xlarge for cost-optimized Spot.
+# consolidateAfter: 300s — terminate idle nodes after 5 minutes.
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: spark-executors
+spec:
+  template:
+    metadata:
+      labels:
+        spark-role: executor
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: spark-executors
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+            - spot
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - m5.xlarge
+            - m5.2xlarge
+            - m6i.xlarge
+            - m6i.2xlarge
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+            - amd64
+      taints:
+        - key: spark-role
+          value: executor
+          effect: NoSchedule
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s
+  limits:
+    cpu: "1000"
+    memory: 1000Gi
+---
+# ---------------------------------------------------------------------------------------------------------------------
+# EC2NODECLASS: SPARK EXECUTORS
+# Defines EC2 launch configuration for executor nodes.
+# AL2023 AMI, discovers subnets and security groups via karpenter.sh/discovery tag.
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: spark-executors
+spec:
+  role: "KarpenterNodeRole-exit status 1"
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "exit status 1"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "exit status 1"
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp3
+        deleteOnTermination: true

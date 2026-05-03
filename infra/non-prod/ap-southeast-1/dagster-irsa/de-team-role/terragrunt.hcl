@@ -20,7 +20,7 @@ dependency "eks" {
     cluster_name      = "mock-eks-cluster"
     oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.ap-southeast-1.amazonaws.com/id/MOCK"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 dependency "policy" {
@@ -29,7 +29,7 @@ dependency "policy" {
   mock_outputs = {
     arn = "arn:aws:iam::123456789012:policy/mock-dagster-de-team"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
 inputs = {
