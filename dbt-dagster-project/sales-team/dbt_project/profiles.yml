@@ -15,3 +15,12 @@ sales_team_lakehouse:
       database: staging
       schema: staging
       work_group: primary
+    # CI target — used by dagster-dbt prepare-and-package in GitHub Actions.
+    # dbt parse requires a valid profile but never connects to Athena.
+    ci:
+      type: athena
+      s3_staging_dir: "s3://dummy/athena-staging/"
+      region_name: ap-southeast-1
+      database: staging
+      schema: staging
+      work_group: primary

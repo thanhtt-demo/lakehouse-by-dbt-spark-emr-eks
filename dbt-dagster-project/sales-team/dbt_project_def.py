@@ -17,5 +17,6 @@ dbt_project = DbtProject(
         if os.getenv("DAGSTER_ENV") == "prod"
         else None
     ),
+    target=os.getenv("DBT_TARGET", None),
 )
 dbt_project.prepare_if_dev()

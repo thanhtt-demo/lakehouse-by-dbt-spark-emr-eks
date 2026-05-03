@@ -90,6 +90,8 @@ jobs:
 
       - name: Prepare and package dbt manifest
         working-directory: dbt-dagster-project/de-team
+        env:
+          DBT_TARGET: ci
         run: dagster-dbt project prepare-and-package --file dbt_project_def.py
 
       - name: Build and push Code Image
@@ -145,6 +147,8 @@ jobs:
 
       - name: Prepare and package dbt manifest
         working-directory: dbt-dagster-project/sales-team
+        env:
+          DBT_TARGET: ci
         run: dagster-dbt project prepare-and-package --file dbt_project_def.py
 
       - name: Build and push Code Image
