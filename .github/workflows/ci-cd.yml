@@ -97,8 +97,8 @@ jobs:
       - name: Build and push Code Image
         working-directory: dbt-dagster-project/de-team
         run: |
-          IMAGE_URI="${{ env.ECR_REGISTRY }}/de-team-code:${{ steps.meta.outputs.image-tag }}"
-          BASE_IMAGE="${{ env.ECR_REGISTRY }}/de-team-base:latest"
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/lakehouse-at-scale/de-team-code:${{ steps.meta.outputs.image-tag }}"
+          BASE_IMAGE="${{ env.ECR_REGISTRY }}/lakehouse-at-scale/de-team-base:latest"
 
           docker build \
             --build-arg BASE_IMAGE="${BASE_IMAGE}" \
@@ -154,8 +154,8 @@ jobs:
       - name: Build and push Code Image
         working-directory: dbt-dagster-project/sales-team
         run: |
-          IMAGE_URI="${{ env.ECR_REGISTRY }}/sales-team-code:${{ steps.meta.outputs.image-tag }}"
-          BASE_IMAGE="${{ env.ECR_REGISTRY }}/sales-team-base:latest"
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/lakehouse-at-scale/sales-team-code:${{ steps.meta.outputs.image-tag }}"
+          BASE_IMAGE="${{ env.ECR_REGISTRY }}/lakehouse-at-scale/sales-team-base:latest"
 
           docker build \
             --build-arg BASE_IMAGE="${BASE_IMAGE}" \
