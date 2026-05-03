@@ -43,7 +43,7 @@ dagster:
   # USER CODE DEPLOYMENTS — 2 code locations (de-team, sales-team)
   # Each entry runs as a separate gRPC server pod with its own image and service account.
   # ---------------------------------------------------------------------------
-  dagsterUserDeployments:
+  dagster-user-deployments:
     enabled: true
     deployments:
       # -------------------------------------------------------------------------
@@ -67,7 +67,7 @@ dagster:
           limits:
             cpu: 500m
             memory: 1Gi
-        envVars:
+        env:
           - name: DAGSTER_ENV
             value: "prod"
           - name: AWS_REGION
@@ -99,7 +99,7 @@ dagster:
           limits:
             cpu: 500m
             memory: 1Gi
-        envVars:
+        env:
           - name: DAGSTER_ENV
             value: "prod"
           - name: AWS_REGION
