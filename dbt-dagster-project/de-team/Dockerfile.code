@@ -26,3 +26,4 @@ COPY dagster_project/ /app/dagster_project/
 
 # Use hadoop user (matching base image — EMR on EKS default)
 USER hadoop
+
