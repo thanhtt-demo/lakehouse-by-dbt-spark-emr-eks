@@ -49,6 +49,15 @@ dagster:
   # ---------------------------------------------------------------------------
   dagster-user-deployments:
     enabled: true
+    # Shared service account for all user code deployments.
+    # Dagster Helm chart does NOT support per-deployment SAs — all deployments share one SA.
+    # For demo, this SA has combined permissions (EMR + Athena + Glue + S3).
+    # For production, consider separate Dagster installations per team.
+    serviceAccount:
+      create: true
+      name: dagster-user-deployments
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260502235436821500000001"
     deployments:
       # -------------------------------------------------------------------------
 
@@ -88,11 +97,6 @@ dagster:
             value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260502235355283900000001"
           - name: SPARK_CODE_IMAGE_URI
             value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-        serviceAccount:
-          create: true
-          name: dagster-de-team
-          annotations:
-            eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260502235436821500000001"
       # -------------------------------------------------------------------------
       - name: sales-team
         # -------------------------------------------------------------------------
@@ -122,8 +126,3 @@ dagster:
             value: "ap-southeast-1"
           - name: PYTHONPATH
             value: "/app"
-        serviceAccount:
-          create: true
-          name: dagster-sales-team
-          annotations:
-            eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-sales-team-20260502235350188400000001"

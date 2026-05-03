@@ -32,17 +32,27 @@ dependency "policy" {
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
+dependency "sales_policy" {
+  config_path = "../sales-team-policy"
+
+  mock_outputs = {
+    arn = "arn:aws:iam::123456789012:policy/mock-dagster-sales-team"
+  }
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
+}
+
 inputs = {
   name = "lakehouse-at-scale-dagster-de-team"
 
   oidc_providers = {
     this = {
       provider_arn               = dependency.eks.outputs.oidc_provider_arn
-      namespace_service_accounts = ["dagster:dagster-de-team"]
+      namespace_service_accounts = ["dagster:dagster-user-deployments"]
     }
   }
 
   policies = {
-    dagster-de-team = dependency.policy.outputs.arn
+    dagster-de-team    = dependency.policy.outputs.arn
+    dagster-sales-team = dependency.sales_policy.outputs.arn
   }
 }
