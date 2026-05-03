@@ -23,6 +23,9 @@ spec:
         - {{ . }}
         {{- end }}
       {{- end }}
+      {{- if .helm.skipSchemaValidation }}
+      skipSchemaValidation: true
+      {{- end }}
     {{- end }}
   destination:
     server: {{ $.Values.spec.destination.server }}

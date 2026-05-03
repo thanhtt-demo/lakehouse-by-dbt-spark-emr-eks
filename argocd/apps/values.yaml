@@ -44,6 +44,7 @@ applications:
     syncWave: "3"
     helm:
       enabled: true
+      skipSchemaValidation: true
       valueFiles:
         - values.yaml
 
@@ -75,3 +76,15 @@ appProject:
       kind: NodePool
     - group: karpenter.k8s.aws
       kind: EC2NodeClass
+    - group: karpenter.sh
+      kind: NodeClaim
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
