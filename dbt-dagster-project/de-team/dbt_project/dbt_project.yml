@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DBT PROJECT CONFIGURATION — de-team (dbt-spark + Iceberg)
+# Lakehouse platform: dbt models execute on Spark via EMR on EKS, writing Iceberg tables to S3.
+# Glue Data Catalog serves as the metastore.
+# ---------------------------------------------------------------------------------------------------------------------
+
+name: "de_team_lakehouse"
+version: "1.0.0"
+
+config-version: 2
+
+profile: "de_team_lakehouse"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# MODEL PATHS
+# ---------------------------------------------------------------------------------------------------------------------
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# DEFAULT MATERIALIZATIONS
+# Default: table with Iceberg file format.
+# Incremental models use merge strategy for Iceberg ACID upserts.
+# ---------------------------------------------------------------------------------------------------------------------
+
+models:
+  de_team_lakehouse:
+    +materialized: table
+    +file_format: iceberg
+    +incremental_strategy: merge
+
+    staging:
+      +schema: staging
+
+    intermediate:
+      +schema: intermediate
+
+    marts:
+      +schema: marts

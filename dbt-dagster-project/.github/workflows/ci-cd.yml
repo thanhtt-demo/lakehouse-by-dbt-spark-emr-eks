@@ -1,0 +1,221 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# CI/CD PIPELINE — dbt-dagster-project
+# Builds Code Images for de-team and/or sales-team on push to main.
+# Only rebuilds the code location(s) whose files changed (path filters).
+# Flow: detect changes → dagster-dbt prepare-and-package → build Code_Image → push ECR → update ArgoCD repo.
+# Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 15.4, 17.4, 18.7
+# ---------------------------------------------------------------------------------------------------------------------
+
+name: CI/CD — Build & Deploy Code Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "dbt-dagster-project/de-team/**"
+      - "dbt-dagster-project/sales-team/**"
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com
+  ARGOCD_REPO: ${{ secrets.ARGOCD_REPO }}  # e.g. org/argocd-app-repo
+
+permissions:
+  id-token: write   # OIDC token for AWS authentication
+  contents: read
+
+# ---------------------------------------------------------------------------------------------------------------------
+# DETECT CHANGES
+# Determines which code locations have changed files so we only rebuild what's needed.
+# ---------------------------------------------------------------------------------------------------------------------
+jobs:
+  detect-changes:
+    name: Detect changed code locations
+    runs-on: ubuntu-latest
+    outputs:
+      de-team: ${{ steps.filter.outputs.de-team }}
+      sales-team: ${{ steps.filter.outputs.sales-team }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect path changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            de-team:
+              - 'dbt-dagster-project/de-team/**'
+            sales-team:
+              - 'dbt-dagster-project/sales-team/**'
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # BUILD DE-TEAM CODE IMAGE
+  # Runs dagster-dbt prepare-and-package → builds Code_Image FROM Base_Image → pushes to ECR with git SHA tag.
+  # -------------------------------------------------------------------------------------------------------------------
+  build-de-team:
+    name: Build de-team Code Image
+    needs: detect-changes
+    if: needs.detect-changes.outputs.de-team == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          echo "image-tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dagster-dbt CLI
+        run: pip install "dagster-dbt>=0.29,<1.0" "dbt-spark>=1.9,<1.10"
+
+      - name: Prepare and package dbt manifest
+        working-directory: dbt-dagster-project/de-team
+        run: dagster-dbt project prepare-and-package --file dagster_project/assets/dbt_assets.py
+
+      - name: Build and push Code Image
+        working-directory: dbt-dagster-project/de-team
+        run: |
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/de-team-code:${{ steps.meta.outputs.image-tag }}"
+          BASE_IMAGE="${{ env.ECR_REGISTRY }}/de-team-base:latest"
+
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+            -f Dockerfile.code \
+            -t "${IMAGE_URI}" \
+            .
+
+          docker push "${IMAGE_URI}"
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # BUILD SALES-TEAM CODE IMAGE
+  # Same flow as de-team but for sales-team code location (dbt-athena, no Spark).
+  # -------------------------------------------------------------------------------------------------------------------
+  build-sales-team:
+    name: Build sales-team Code Image
+    needs: detect-changes
+    if: needs.detect-changes.outputs.sales-team == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          echo "image-tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dagster-dbt CLI
+        run: pip install "dagster-dbt>=0.29,<1.0" "dbt-athena>=1.10,<2.0"
+
+      - name: Prepare and package dbt manifest
+        working-directory: dbt-dagster-project/sales-team
+        run: dagster-dbt project prepare-and-package --file dagster_project/assets/dbt_assets.py
+
+      - name: Build and push Code Image
+        working-directory: dbt-dagster-project/sales-team
+        run: |
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/sales-team-code:${{ steps.meta.outputs.image-tag }}"
+          BASE_IMAGE="${{ env.ECR_REGISTRY }}/sales-team-base:latest"
+
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+            -f Dockerfile.code \
+            -t "${IMAGE_URI}" \
+            .
+
+          docker push "${IMAGE_URI}"
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # UPDATE ARGOCD APP REPO
+  # Updates image tags in the ArgoCD Dagster Helm values.yaml and pushes a commit.
+  # ArgoCD detects the change and auto-syncs — rolling update of the affected user code pod(s).
+  # Only updates the tag for the code location(s) that were rebuilt.
+  # -------------------------------------------------------------------------------------------------------------------
+  update-argocd:
+    name: Update ArgoCD image tags
+    needs: [detect-changes, build-de-team, build-sales-team]
+    if: always() && (needs.build-de-team.result == 'success' || needs.build-sales-team.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ArgoCD App Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ARGOCD_REPO }}
+          token: ${{ secrets.ARGOCD_REPO_PAT }}
+          path: argocd-repo
+
+      - name: Update de-team image tag
+        if: needs.build-de-team.result == 'success'
+        working-directory: argocd-repo
+        run: |
+          IMAGE_TAG="${{ needs.build-de-team.outputs.image-tag }}"
+          # Update de-team image tag in Dagster Helm values
+          # Uses yq to surgically update only the de-team deployment tag
+          yq -i '
+            .dagster.dagster-user-deployments.deployments[] |=
+              select(.name == "de-team").image.tag = "'"${IMAGE_TAG}"'"
+          ' argocd/dagster/values.yaml
+
+      - name: Update sales-team image tag
+        if: needs.build-sales-team.result == 'success'
+        working-directory: argocd-repo
+        run: |
+          IMAGE_TAG="${{ needs.build-sales-team.outputs.image-tag }}"
+          yq -i '
+            .dagster.dagster-user-deployments.deployments[] |=
+              select(.name == "sales-team").image.tag = "'"${IMAGE_TAG}"'"
+          ' argocd/dagster/values.yaml
+
+      - name: Commit and push
+        working-directory: argocd-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Build commit message listing which locations were updated
+          MSG="ci: update code image tags [${GITHUB_SHA::8}]"
+          if [ "${{ needs.build-de-team.result }}" = "success" ]; then
+            MSG="${MSG} de-team"
+          fi
+          if [ "${{ needs.build-sales-team.result }}" = "success" ]; then
+            MSG="${MSG} sales-team"
+          fi
+
+          git add argocd/dagster/values.yaml
+          git diff --cached --quiet || git commit -m "${MSG}"
+          git push

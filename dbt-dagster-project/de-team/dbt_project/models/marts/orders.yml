@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# MARTS MODEL: orders
+# Business-facing orders table — incremental with Iceberg merge strategy.
+# Custom Spark resources defined in meta.spark_config for this heavy workload.
+# ---------------------------------------------------------------------------------------------------------------------
+
+version: 2
+
+models:
+  - name: orders
+    description: "Business-facing orders table with enriched data, incrementally updated via Iceberg merge"
+    config:
+      materialized: incremental
+      incremental_strategy: merge
+      file_format: iceberg
+      unique_key: order_id
+    meta:
+      spark_config:
+        driver_cpu: "2"
+        driver_memory: "4g"
+        executor_cpu: "2"
+        executor_memory: "8g"
+        executor_instances: 4
+    columns:
+      - name: order_id
+        description: "Unique identifier for each order"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer who placed the order"
+        tests:
+          - not_null
+      - name: order_date
+        description: "Date the order was placed"
+      - name: status
+        description: "Current order status (pending, completed, cancelled)"
+      - name: amount
+        description: "Order total amount"
+      - name: currency
+        description: "Currency code"
+      - name: updated_at
+        description: "Timestamp of last update from source"
+      - name: dbt_updated_at
+        description: "Timestamp when dbt last processed this record"

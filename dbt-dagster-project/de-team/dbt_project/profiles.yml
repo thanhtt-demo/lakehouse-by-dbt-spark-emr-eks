@@ -1,0 +1,13 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DBT PROFILES — de-team (dbt-spark adapter)
+# Uses method: session — connects directly to the active SparkSession in the same Python process
+# on the Spark Driver Pod (EMR on EKS). No Thrift server needed.
+# ---------------------------------------------------------------------------------------------------------------------
+
+de_team_lakehouse:
+  target: prod
+  outputs:
+    prod:
+      type: spark
+      method: session
+      schema: staging

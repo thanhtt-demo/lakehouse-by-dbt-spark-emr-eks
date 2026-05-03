@@ -179,28 +179,28 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
   - Chạy `helm template argocd/dagster/` để validate Dagster chart render đúng (2 code locations)
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Triển khai dbt Projects
-  - [ ] 8.1 Tạo dbt project cho de-team (dbt-spark)
+- [x] 8. Triển khai dbt Projects
+  - [x] 8.1 Tạo dbt project cho de-team (dbt-spark)
     - Tạo `dbt-dagster-project/de-team/dbt_project/dbt_project.yml`: project name, version, materialization mặc định `table` với `file_format: iceberg`
     - Tạo `dbt-dagster-project/de-team/dbt_project/profiles.yml`: dbt-spark adapter với `method: session` (kết nối SparkSession active trong cùng process)
     - Tạo cấu trúc thư mục models: `staging/`, `intermediate/`, `marts/`
     - Tạo schema mapping cho Glue Data Catalog databases
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 4.1_
 
-  - [ ] 8.2 Tạo sample dbt models cho de-team
+  - [x] 8.2 Tạo sample dbt models cho de-team
     - Tạo ít nhất 2 sample models (staging + marts) với dependency giữa chúng
     - Tạo model YAML với `meta.spark_config` cho model cần custom Spark resources (ví dụ: `orders.yml` với driver_cpu, executor_instances)
     - Tạo model sử dụng incremental materialization với `incremental_strategy: merge`, `unique_key`
     - _Requirements: 2.1, 2.2, 4.4_
 
-  - [ ] 8.3 Tạo dbt project cho sales-team (dbt-athena)
+  - [x] 8.3 Tạo dbt project cho sales-team (dbt-athena)
     - Tạo `dbt-dagster-project/sales-team/dbt_project/dbt_project.yml`: project name, materialization mặc định `table` với `file_format: iceberg`
     - Tạo `dbt-dagster-project/sales-team/dbt_project/profiles.yml`: dbt-athena adapter
     - Tạo cấu trúc thư mục models và ít nhất 1 sample model
     - _Requirements: 18.3_
 
-- [ ] 9. Triển khai Dagster Application Code — de-team
-  - [ ] 9.1 Tạo SparkConfigManager (`de-team/dagster_project/utils/spark_config.py`)
+- [x] 9. Triển khai Dagster Application Code — de-team
+  - [x] 9.1 Tạo SparkConfigManager (`de-team/dagster_project/utils/spark_config.py`)
     - Implement class `SparkResourceConfig` (dataclass) với default values: driver_cpu="1", driver_memory="2g", executor_cpu="1", executor_memory="4g", executor_instances=2
     - Implement class `SparkJobConfig` (dataclass) với `resources: SparkResourceConfig` và `spark_properties: dict[str, str]`
     - Implement class `SparkConfigManager` với:
@@ -210,7 +210,7 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
     - Implement DEFAULT_SPARK_PROPERTIES dict với Iceberg + Glue catalog configs
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 11.1, 11.2, 11.3_
 
-  - [ ] 9.2 Tạo dbt_assets.py (`de-team/dagster_project/assets/dbt_assets.py`)
+  - [x] 9.2 Tạo dbt_assets.py (`de-team/dagster_project/assets/dbt_assets.py`)
     - Implement `DbtProject` initialization với `project_dir` và `packaged_project_dir` (prod: precompiled manifest)
     - Implement `SparkDbtTranslator(DagsterDbtTranslator)` — custom translator inject `spark_config` từ dbt model meta vào Dagster asset metadata
     - Implement `@dbt_assets` decorated function `de_team_dbt_assets`:
@@ -222,7 +222,7 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
     - Implement helper functions: `get_parsed_manifest()`, `_find_model_in_manifest()`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 3.1, 10.3_
 
-  - [ ] 9.3 Tạo Spark entrypoint script (`de-team/spark_entrypoint/entrypoint.py`)
+  - [x] 9.3 Tạo Spark entrypoint script (`de-team/spark_entrypoint/entrypoint.py`)
     - Implement `main()`:
       - Khởi tạo `open_dagster_pipes` với `PipesS3MessageWriter`
       - Lấy `model_name` và `dbt_command` từ Pipes extras
@@ -234,17 +234,17 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
     - Implement `_report_test_results()` và `_parse_run_results()` helper functions
     - _Requirements: 3.3, 3.4, 3.5, 10.4, 10.5, 12.1_
 
-  - [ ] 9.4 Tạo Python-only assets (`de-team/dagster_project/assets/python_assets.py`)
+  - [x] 9.4 Tạo Python-only assets (`de-team/dagster_project/assets/python_assets.py`)
     - Tạo ít nhất 1 sample Python-only asset chạy trực tiếp trên Dagster user code pod (không submit Spark job)
     - Đảm bảo Python asset có thể dependency với dbt assets trong cùng asset graph
     - _Requirements: 17.1, 17.2, 17.3_
 
-  - [ ] 9.5 Tạo PipesEMRContainersClient resource (`de-team/dagster_project/resources/__init__.py`)
+  - [x] 9.5 Tạo PipesEMRContainersClient resource (`de-team/dagster_project/resources/__init__.py`)
     - Implement `create_pipes_emr_client()` function:
       - Tạo `PipesEMRContainersClient` với `PipesS3MessageReader` (bucket, include_stdio_in_messages=True)
     - _Requirements: 10.1, 10.2_
 
-  - [ ] 9.6 Tạo Dagster Definitions (`de-team/dagster_project/definitions.py`)
+  - [x] 9.6 Tạo Dagster Definitions (`de-team/dagster_project/definitions.py`)
     - Import tất cả assets (dbt_assets, python_assets) và resources
     - Tạo `dg.Definitions` với:
       - assets: `[de_team_dbt_assets, *python_only_assets]`
@@ -252,28 +252,28 @@ Kế hoạch triển khai hệ thống dbt-dagster-lakehouse theo thứ tự ưu
     - Tạo `__init__.py` files cho tất cả packages
     - _Requirements: 1.1, 10.1_
 
-- [ ] 10. Triển khai Dagster Application Code — sales-team
-  - [ ] 10.1 Tạo dbt_assets.py cho sales-team (`sales-team/dagster_project/assets/dbt_assets.py`)
+- [x] 10. Triển khai Dagster Application Code — sales-team
+  - [x] 10.1 Tạo dbt_assets.py cho sales-team (`sales-team/dagster_project/assets/dbt_assets.py`)
     - Implement `@dbt_assets` decorated function cho dbt-athena assets
     - Sử dụng `DbtCliResource` để chạy dbt trực tiếp (không cần Spark/EMR) — khác de-team
     - _Requirements: 18.3_
 
-  - [ ] 10.2 Tạo Python-only assets và resources cho sales-team
+  - [x] 10.2 Tạo Python-only assets và resources cho sales-team
     - Tạo `sales-team/dagster_project/assets/python_assets.py` — sample Python asset
     - Tạo `sales-team/dagster_project/resources/__init__.py` — resources cho Athena
     - _Requirements: 17.1, 18.3_
 
-  - [ ] 10.3 Tạo Dagster Definitions cho sales-team (`sales-team/dagster_project/definitions.py`)
+  - [x] 10.3 Tạo Dagster Definitions cho sales-team (`sales-team/dagster_project/definitions.py`)
     - Import assets và resources, tạo `dg.Definitions`
     - Tạo `__init__.py` files cho tất cả packages
     - _Requirements: 18.1, 18.3_
 
-- [ ] 11. Checkpoint — Xác nhận Application Code
+- [x] 11. Checkpoint — Xác nhận Application Code
   - Chạy `python -c "from dagster_project.definitions import defs"` cho cả de-team và sales-team để verify import thành công
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Tạo CI/CD Pipeline — GitHub Actions
-  - [ ] 12.1 Tạo GitHub Actions workflow (`dbt-dagster-project/.github/workflows/ci-cd.yml`)
+- [x] 12. Tạo CI/CD Pipeline — GitHub Actions
+  - [x] 12.1 Tạo GitHub Actions workflow (`dbt-dagster-project/.github/workflows/ci-cd.yml`)
     - Implement workflow trigger: push to main branch, path filters cho `de-team/` và `sales-team/`
     - Implement jobs:
       - **build-de-team**: Chạy `dagster-dbt project prepare-and-package` → build Code_Image FROM Base_Image → push lên ECR với tag `git-sha`

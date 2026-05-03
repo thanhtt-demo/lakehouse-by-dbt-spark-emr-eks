@@ -341,7 +341,7 @@ aws glue get-databases \
 - Dagster IRSA roles require the `spark` and `dagster` namespaces + service accounts to exist (created by ArgoCD)
 - ArgoCD App-of-Apps charts are ready — bootstrap with `kubectl apply -f argocd/app-of-apps.yaml` after ArgoCD is installed on the cluster
 - Placeholder values in ArgoCD charts (cluster name, IRSA role ARNs, ECR URLs) need to be populated from Terraform outputs before deploying
-- Current state: all AWS resources for tasks 1–3 ready, Docker images for task 5 ready, ArgoCD charts for task 6 ready
+- Current state: all AWS resources for tasks 1–3 ready, Docker images for task 5 ready, ArgoCD charts for task 6 ready, dbt projects for task 8 ready, de-team Dagster application code for task 9 ready, sales-team Dagster application code for task 10 ready, application code import validation (task 11) passed (dagster-aws 0.29.3, dagster 1.13.3, dagster-dbt 0.29.3), CI/CD pipeline for task 12 ready
 - To destroy all resources: `cd infra/non-prod/ap-southeast-1 && terragrunt run --all destroy`
 
 ---
@@ -435,3 +435,215 @@ kubectl apply --dry-run=client -f argocd/app-of-apps.yaml
 - [ ] Dagster chart renders correctly
 - [ ] Namespace manifests valid
 - [ ] Bootstrap Application CRD valid
+
+---
+
+## Task 8 — dbt Projects
+
+### Verify
+
+```bash
+# Validate de-team dbt project YAML
+cd dbt-dagster-project/de-team/dbt_project
+python -c "import yaml; yaml.safe_load(open('dbt_project.yml'))" && echo "dbt_project.yml OK"
+python -c "import yaml; yaml.safe_load(open('profiles.yml'))" && echo "profiles.yml OK"
+
+# Validate sales-team dbt project YAML
+cd dbt-dagster-project/sales-team/dbt_project
+python -c "import yaml; yaml.safe_load(open('dbt_project.yml'))" && echo "dbt_project.yml OK"
+python -c "import yaml; yaml.safe_load(open('profiles.yml'))" && echo "profiles.yml OK"
+
+# Check de-team model files exist
+ls dbt-dagster-project/de-team/dbt_project/models/staging/stg_raw_orders.sql
+ls dbt-dagster-project/de-team/dbt_project/models/marts/orders.sql
+ls dbt-dagster-project/de-team/dbt_project/models/marts/orders.yml
+
+# Check sales-team model files exist
+ls dbt-dagster-project/sales-team/dbt_project/models/staging/stg_sales.sql
+ls dbt-dagster-project/sales-team/dbt_project/models/staging/schema.yml
+
+# Check generate_schema_name macro exists for both teams
+ls dbt-dagster-project/de-team/dbt_project/macros/generate_schema_name.sql
+ls dbt-dagster-project/sales-team/dbt_project/macros/generate_schema_name.sql
+```
+
+| Check | Expected |
+|---|---|
+| de-team `dbt_project.yml` | Valid YAML, project `de_team_lakehouse`, default `table` + `iceberg` |
+| de-team `profiles.yml` | dbt-spark, `method: session` |
+| de-team `stg_raw_orders.sql` | References `{{ source('raw', 'raw_orders') }}` |
+| de-team `orders.sql` | Incremental merge, `unique_key: order_id`, references `{{ ref('stg_raw_orders') }}` |
+| de-team `orders.yml` | `meta.spark_config` with driver_cpu: 2, executor_instances: 4 |
+| de-team `generate_schema_name.sql` | Maps custom schemas to Glue DB names |
+| sales-team `dbt_project.yml` | Valid YAML, project `sales_team_lakehouse`, default `table` + `iceberg` |
+| sales-team `profiles.yml` | dbt-athena, `type: athena`, s3_staging_dir |
+| sales-team `stg_sales.sql` | References `{{ source('raw', 'raw_sales') }}` |
+| sales-team `generate_schema_name.sql` | Maps custom schemas to Glue DB names |
+
+### Status
+
+- [x] de-team dbt project created (dbt-spark + Iceberg)
+- [x] de-team sample models created (staging + marts with dependency)
+- [x] de-team incremental model with merge strategy
+- [x] de-team spark_config meta on orders model
+- [x] sales-team dbt project created (dbt-athena + Iceberg)
+- [x] sales-team sample model created (staging)
+
+---
+
+## Task 9 — Dagster Application Code (de-team)
+
+### Verify
+
+```bash
+# Check all files exist
+ls dbt-dagster-project/de-team/dagster_project/__init__.py
+ls dbt-dagster-project/de-team/dagster_project/definitions.py
+ls dbt-dagster-project/de-team/dagster_project/assets/__init__.py
+ls dbt-dagster-project/de-team/dagster_project/assets/dbt_assets.py
+ls dbt-dagster-project/de-team/dagster_project/assets/python_assets.py
+ls dbt-dagster-project/de-team/dagster_project/resources/__init__.py
+ls dbt-dagster-project/de-team/dagster_project/utils/__init__.py
+ls dbt-dagster-project/de-team/dagster_project/utils/spark_config.py
+ls dbt-dagster-project/de-team/spark_entrypoint/entrypoint.py
+
+# Verify Python imports (requires dagster, dagster-dbt, dagster-aws installed)
+cd dbt-dagster-project/de-team
+python -c "from dagster_project.utils.spark_config import SparkConfigManager, SparkJobConfig, SparkResourceConfig; print('spark_config OK')"
+python -c "from dagster_project.resources import create_pipes_emr_client; print('resources OK')"
+```
+
+| Check | Expected |
+|---|---|
+| `spark_config.py` | `SparkResourceConfig`, `SparkJobConfig`, `SparkConfigManager`, `DEFAULT_SPARK_PROPERTIES` |
+| `SparkConfigManager.merge_config()` | Partial override with default fallback, None → full default |
+| `SparkConfigManager.build_start_job_run_params()` | Returns dict with releaseLabel, virtualClusterId, executionRoleArn, jobDriver |
+| `dbt_assets.py` | `@dbt_assets` with `SparkDbtTranslator`, submits via `PipesEMRContainersClient` |
+| `python_assets.py` | `orders_validation` asset with `deps=["orders"]` |
+| `entrypoint.py` | `open_dagster_pipes` + `dbtRunner` + `report_asset_materialization` |
+| `resources/__init__.py` | `create_pipes_emr_client()` with `PipesS3MessageReader` |
+| `definitions.py` | `dg.Definitions` with all assets + resources |
+
+### Status
+
+- [x] SparkConfigManager implemented (merge + build_start_job_run_params)
+- [x] dbt_assets.py implemented (@dbt_assets + PipesEMRContainersClient)
+- [x] Spark entrypoint implemented (dbt build via Pipes)
+- [x] Python-only assets implemented (orders_validation)
+- [x] PipesEMRContainersClient resource implemented
+- [x] Dagster Definitions entry point implemented
+- [x] All __init__.py files created
+
+## Task 10 — Dagster Application Code (sales-team)
+
+### Verify
+
+```bash
+# Check all files exist
+ls dbt-dagster-project/sales-team/dagster_project/__init__.py
+ls dbt-dagster-project/sales-team/dagster_project/definitions.py
+ls dbt-dagster-project/sales-team/dagster_project/assets/__init__.py
+ls dbt-dagster-project/sales-team/dagster_project/assets/dbt_assets.py
+ls dbt-dagster-project/sales-team/dagster_project/assets/python_assets.py
+ls dbt-dagster-project/sales-team/dagster_project/resources/__init__.py
+
+# Verify Python imports (requires dagster, dagster-dbt installed)
+cd dbt-dagster-project/sales-team
+python -c "from dagster_project.resources import create_dbt_cli_resource; print('resources OK')"
+```
+
+| Check | Expected |
+|---|---|
+| `dbt_assets.py` | `@dbt_assets` with `DbtCliResource`, runs `dbt build` via `dbt_cli.cli()` |
+| `python_assets.py` | `sales_data_validation` asset with `deps=["stg_sales"]` |
+| `resources/__init__.py` | `create_dbt_cli_resource()` returning `DbtCliResource` |
+| `definitions.py` | `dg.Definitions` with all assets + `dbt_cli` resource |
+| No Spark/EMR deps | sales-team uses DbtCliResource only (Athena), no PipesEMRContainersClient |
+
+### Status
+
+- [x] dbt_assets.py implemented (@dbt_assets + DbtCliResource)
+- [x] Python-only assets implemented (sales_data_validation)
+- [x] DbtCliResource resource implemented
+- [x] Dagster Definitions entry point implemented
+- [x] All __init__.py files created
+
+---
+
+## Task 11 — Checkpoint: Application Code Validation
+
+### Verify
+
+```bash
+# de-team: verify Dagster definitions import
+$env:PYTHONPATH = "dbt-dagster-project/de-team"; python -c "from dagster_project.definitions import defs; print('de-team import OK')"
+
+# sales-team: verify Dagster definitions import
+$env:PYTHONPATH = "dbt-dagster-project/sales-team"; python -c "from dagster_project.definitions import defs; print('sales-team import OK')"
+```
+
+| Check | Expected |
+|---|---|
+| de-team `from dagster_project.definitions import defs` | Imports successfully |
+| de-team resources | `pipes_emr_containers_client`, `spark_config_manager` |
+| sales-team `from dagster_project.definitions import defs` | Imports successfully |
+| sales-team resources | `dbt_cli` |
+
+### Fixes Applied During Validation
+
+| Issue | Root Cause | Fix |
+|---|---|---|
+| `DagsterInvalidDefinitionError: Invalid asset dependencies: spark_config_manager` | `SparkConfigManager` was a plain Python class, not a Dagster resource | Converted to `dg.ConfigurableResource` subclass with flat Pydantic fields |
+| `Cannot annotate context parameter with type dg.AssetExecutionContext` | `from __future__ import annotations` makes type hints lazy strings; Dagster's decorator introspection needs actual type objects | Removed `from __future__ import annotations` from all Dagster asset/definition files |
+| `Cannot set database in spark!` | dbt-spark source had `database: glue_catalog` which is not supported | Removed `database` field from staging source definition |
+
+### Status
+
+- [x] de-team definitions import verified
+- [x] sales-team definitions import verified
+- [x] All resources registered correctly
+
+---
+
+## Task 12 — CI/CD Pipeline (GitHub Actions)
+
+### Verify
+
+```bash
+# Validate workflow YAML syntax
+python -c "import yaml; yaml.safe_load(open('dbt-dagster-project/.github/workflows/ci-cd.yml'))" && echo "ci-cd.yml OK"
+
+# Check workflow file exists
+ls dbt-dagster-project/.github/workflows/ci-cd.yml
+```
+
+| Check | Expected |
+|---|---|
+| Workflow trigger | `push` to `main`, path filters for `de-team/**` and `sales-team/**` |
+| `detect-changes` job | Uses `dorny/paths-filter@v3` to detect which code locations changed |
+| `build-de-team` job | Conditional on de-team changes, runs `dagster-dbt prepare-and-package`, builds Code Image, pushes to ECR with git SHA tag |
+| `build-sales-team` job | Conditional on sales-team changes, same flow for sales-team |
+| `update-argocd` job | Runs if any build succeeded, updates image tag in ArgoCD Dagster Helm values, pushes commit |
+| AWS auth | OIDC (`aws-actions/configure-aws-credentials@v4`) |
+| ECR login | `aws-actions/amazon-ecr-login@v2` |
+| Image tag format | First 8 chars of git commit SHA |
+| Path isolation | Only rebuilds changed code location(s) |
+| ArgoCD update | Uses `yq` to surgically update only the changed deployment's image tag |
+
+### Required GitHub Secrets
+
+| Secret | How to obtain |
+|---|---|
+| `AWS_ACCOUNT_ID` | AWS account ID (`560503716668` for non-prod). Run `aws sts get-caller-identity --query Account --output text --profile non-prod` |
+| `AWS_OIDC_ROLE_ARN` | Managed by Terragrunt: `cd infra/non-prod/ap-southeast-1/github-oidc && terragrunt run --all apply`, then `cd role && terragrunt output arn` |
+| `ARGOCD_REPO` | `owner/repo` path of the ArgoCD App Repo on GitHub (e.g. `thanhtt-demo/argocd-app-repo`) |
+| `ARGOCD_REPO_PAT` | GitHub Personal Access Token with `contents: write` on the ArgoCD App Repo. Create at GitHub → Settings → Developer settings → Personal access tokens |
+
+Add secrets at: GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
+
+### Status
+
+- [x] GitHub Actions workflow created
+- [ ] Workflow YAML syntax validated
+- [ ] GitHub secrets configured
+- [ ] End-to-end test (push code → image built → ArgoCD updated)

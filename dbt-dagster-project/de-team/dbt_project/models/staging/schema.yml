@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# STAGING SCHEMA CONFIGURATION
+# Maps to Glue Data Catalog database: staging
+# Source-conformed models — minimal transformations, 1:1 with source tables.
+# ---------------------------------------------------------------------------------------------------------------------
+
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw data source tables in Glue Data Catalog"
+    schema: raw
+    tables:
+      - name: raw_orders
+        description: "Raw orders table ingested from upstream systems"
+        columns:
+          - name: order_id
+            description: "Unique identifier for each order"
+          - name: customer_id
+            description: "Customer who placed the order"
+          - name: order_date
+            description: "Date the order was placed"
+          - name: status
+            description: "Current order status (pending, completed, cancelled)"
+          - name: amount
+            description: "Order total amount"
+          - name: currency
+            description: "Currency code (e.g. USD, VND)"
+          - name: updated_at
+            description: "Timestamp of last update to this record"
+
+models:
+  - name: stg_raw_orders
+    description: "Staged orders — source-conformed with column renaming and type casting"
+    columns:
+      - name: order_id
+        description: "Unique identifier for each order"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer who placed the order"
+        tests:
+          - not_null
+      - name: order_date
+        description: "Date the order was placed"
+      - name: status
+        description: "Current order status"
+      - name: amount
+        description: "Order total amount"
+      - name: currency
+        description: "Currency code"
+      - name: updated_at
+        description: "Timestamp of last update"

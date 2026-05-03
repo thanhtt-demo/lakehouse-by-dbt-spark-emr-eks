@@ -1,0 +1,17 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DBT PROFILES — sales-team (dbt-athena adapter)
+# Uses Amazon Athena as the compute engine to query Iceberg tables on S3.
+# Reads/writes to the same S3 Data Lake and Glue Data Catalog as de-team.
+# AWS credentials handled by IRSA (IAM Roles for Service Accounts) — no explicit keys needed.
+# ---------------------------------------------------------------------------------------------------------------------
+
+sales_team_lakehouse:
+  target: prod
+  outputs:
+    prod:
+      type: athena
+      s3_staging_dir: "s3://lakehouse-at-scale-pipes/athena-staging/"
+      region_name: ap-southeast-1
+      database: staging
+      schema: staging
+      work_group: primary

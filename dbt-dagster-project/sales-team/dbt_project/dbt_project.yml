@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# DBT PROJECT CONFIGURATION — sales-team (dbt-athena + Iceberg)
+# Lakehouse platform: dbt models execute on Amazon Athena, reading/writing Iceberg tables on S3.
+# Glue Data Catalog serves as the metastore (same catalog as de-team).
+# ---------------------------------------------------------------------------------------------------------------------
+
+name: "sales_team_lakehouse"
+version: "1.0.0"
+
+config-version: 2
+
+profile: "sales_team_lakehouse"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# MODEL PATHS
+# ---------------------------------------------------------------------------------------------------------------------
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# DEFAULT MATERIALIZATIONS
+# Default: table with Iceberg file format.
+# Athena creates Iceberg tables on the same S3 Data Lake as de-team.
+# ---------------------------------------------------------------------------------------------------------------------
+
+models:
+  sales_team_lakehouse:
+    +materialized: table
+    +file_format: iceberg
+
+    staging:
+      +schema: staging
+
+    marts:
+      +schema: marts

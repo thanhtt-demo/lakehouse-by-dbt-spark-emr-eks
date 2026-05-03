@@ -1,0 +1,9 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# INTERMEDIATE SCHEMA CONFIGURATION
+# Maps to Glue Data Catalog database: intermediate
+# Business logic transformations — joins, aggregations, enrichment.
+# ---------------------------------------------------------------------------------------------------------------------
+
+version: 2
+
+models: []

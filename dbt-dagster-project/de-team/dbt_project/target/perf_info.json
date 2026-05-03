@@ -1,0 +1,51 @@
+{
+    "path_count": 131,
+    "parsed_path_count": 131,
+    "static_analysis_path_count": 2,
+    "static_analysis_parsed_path_count": 1,
+    "is_partial_parse_enabled": true,
+    "is_static_analysis_enabled": true,
+    "read_files_elapsed": 0.07225749999997788,
+    "load_macros_elapsed": 0.7787422000001243,
+    "parse_project_elapsed": 0.6718006000010064,
+    "patch_sources_elapsed": 0.005493299999216106,
+    "process_manifest_elapsed": 0.02649589999964519,
+    "load_all_elapsed": 1.6757547999986855,
+    "projects": [
+        {
+            "project_name": "de_team_lakehouse",
+            "elapsed": 0.6600801999993564,
+            "parsers": [
+                {
+                    "parser": "model",
+                    "elapsed": 0.2656728000001749,
+                    "parsed_path_count": 2
+                },
+                {
+                    "parser": "test",
+                    "elapsed": 0.3899906999995437,
+                    "parsed_path_count": 3
+                }
+            ],
+            "parsed_path_count": 5
+        },
+        {
+            "project_name": "dbt_spark",
+            "elapsed": 0.00553560000116704,
+            "parsers": [],
+            "parsed_path_count": 0
+        },
+        {
+            "project_name": "dbt",
+            "elapsed": 0.006046199998309021,
+            "parsers": [
+                {
+                    "parser": "doc",
+                    "elapsed": 0.00023300000066228677,
+                    "parsed_path_count": 1
+                }
+            ],
+            "parsed_path_count": 1
+        }
+    ]
+}

@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# STAGING SCHEMA CONFIGURATION
+# Maps to Glue Data Catalog database: staging
+# Source-conformed models — minimal transformations, 1:1 with source tables.
+# ---------------------------------------------------------------------------------------------------------------------
+
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw data source tables in Glue Data Catalog"
+    database: staging
+    schema: raw
+    tables:
+      - name: raw_sales
+        description: "Raw sales transactions ingested from upstream systems"
+        columns:
+          - name: sale_id
+            description: "Unique identifier for each sale transaction"
+          - name: product_id
+            description: "Product sold in this transaction"
+          - name: customer_id
+            description: "Customer who made the purchase"
+          - name: sale_date
+            description: "Date the sale occurred"
+          - name: quantity
+            description: "Number of units sold"
+          - name: unit_price
+            description: "Price per unit"
+          - name: total_amount
+            description: "Total sale amount (quantity * unit_price)"
+          - name: region
+            description: "Sales region (e.g. APAC, EMEA, NA)"
+          - name: updated_at
+            description: "Timestamp of last update to this record"
+
+models:
+  - name: stg_sales
+    description: "Staged sales — source-conformed with column renaming and type casting"
+    columns:
+      - name: sale_id
+        description: "Unique identifier for each sale transaction"
+        tests:
+          - not_null
+          - unique
+      - name: product_id
+        description: "Product sold in this transaction"
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Customer who made the purchase"
+        tests:
+          - not_null
+      - name: sale_date
+        description: "Date the sale occurred"
+      - name: quantity
+        description: "Number of units sold"
+      - name: unit_price
+        description: "Price per unit"
+      - name: total_amount
+        description: "Total sale amount"
+      - name: region
+        description: "Sales region"
+      - name: updated_at
+        description: "Timestamp of last update"

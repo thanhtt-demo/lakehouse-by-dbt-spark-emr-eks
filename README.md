@@ -32,6 +32,8 @@ infra/
 │   ├── s3.hcl                      # ✅ S3 shared config (community module)
 │   ├── dagster-irsa-policy.hcl     # ✅ Dagster IAM policy (community module)
 │   ├── dagster-irsa-role.hcl       # ✅ Dagster IRSA role (community module)
+│   ├── github-oidc-provider.hcl    # ✅ GitHub OIDC provider (community module)
+│   ├── github-oidc-role.hcl        # ✅ GitHub OIDC role (community module)
 │   └── glue.hcl                    # ✅ Glue (local module)
 ├── modules/                        # Terraform modules (local only)
 │   ├── vpc/                        # ✅ VPC module
@@ -55,6 +57,9 @@ infra/
         │   ├── de-team-role/
         │   ├── sales-team-policy/
         │   └── sales-team-role/
+        ├── github-oidc/            # ✅ GitHub Actions OIDC (grouped)
+        │   ├── provider/
+        │   └── role/
         └── glue/                   # ✅ Glue Data Catalog databases
 
 argocd/                              # ✅ ArgoCD App-of-Apps (Helm charts + K8s manifests)
@@ -78,6 +83,63 @@ argocd/                              # ✅ ArgoCD App-of-Apps (Helm charts + K8s
 └── namespaces/                      # ✅ Namespace manifests (sync-wave: 1)
     ├── dagster-ns.yaml
     └── spark-ns.yaml
+
+dbt-dagster-project/                     # ✅ dbt Projects + Dagster Application Code
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml                    # ✅ GitHub Actions CI/CD pipeline
+├── de-team/
+│   ├── Dockerfile.base
+│   ├── Dockerfile.code
+│   ├── dagster_project/                 # ✅ Dagster code location (de-team)
+│   │   ├── __init__.py
+│   │   ├── definitions.py              #   Dagster Definitions entry point
+│   │   ├── assets/
+│   │   │   ├── __init__.py
+│   │   │   ├── dbt_assets.py           #   @dbt_assets → EMR on EKS via Pipes
+│   │   │   └── python_assets.py        #   Python-only assets (no Spark)
+│   │   ├── resources/
+│   │   │   └── __init__.py             #   PipesEMRContainersClient factory
+│   │   └── utils/
+│   │       ├── __init__.py
+│   │       └── spark_config.py         #   SparkConfigManager (merge + params builder)
+│   ├── spark_entrypoint/
+│   │   └── entrypoint.py               # ✅ Spark entrypoint (dbt build via Pipes)
+│   └── dbt_project/                     # ✅ dbt-spark + Iceberg
+│       ├── dbt_project.yml
+│       ├── profiles.yml
+│       ├── macros/
+│       │   └── generate_schema_name.sql
+│       └── models/
+│           ├── staging/
+│           │   ├── stg_raw_orders.sql
+│           │   └── schema.yml
+│           ├── intermediate/
+│           └── marts/
+│               ├── orders.sql           # Incremental merge, spark_config meta
+│               └── orders.yml
+└── sales-team/
+    ├── Dockerfile.base
+    ├── Dockerfile.code
+    ├── dagster_project/                 # ✅ Dagster code location (sales-team)
+    │   ├── __init__.py
+    │   ├── definitions.py              #   Dagster Definitions entry point
+    │   ├── assets/
+    │   │   ├── __init__.py
+    │   │   ├── dbt_assets.py           #   @dbt_assets → DbtCliResource (Athena)
+    │   │   └── python_assets.py        #   Python-only assets (no Athena)
+    │   └── resources/
+    │       └── __init__.py             #   DbtCliResource factory
+    └── dbt_project/                     # ✅ dbt-athena + Iceberg
+        ├── dbt_project.yml
+        ├── profiles.yml
+        ├── macros/
+        │   └── generate_schema_name.sql
+        └── models/
+            ├── staging/
+            │   ├── stg_sales.sql
+            │   └── schema.yml
+            └── marts/
 ```
 
 ## Modules
@@ -156,6 +218,21 @@ Uses [`terraform-aws-modules/iam/aws//modules/iam-policy`](https://registry.terr
 | `dagster-irsa/sales-team-policy/` | IAM Policy | Athena, S3 data lake read/write, Glue catalog |
 | `dagster-irsa/sales-team-role/` | IRSA Role | Binds policy to `dagster:dagster-sales-team` service account |
 
+### ✅ GitHub Actions OIDC (community modules — 2 Terragrunt units)
+
+Uses [`terraform-aws-modules/iam/aws//modules/iam-oidc-provider`](https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest/submodules/iam-oidc-provider) and [`iam-role`](https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest/submodules/iam-role) v6.6.0 with `enable_github_oidc`. Creates the OIDC identity provider and an IAM role for GitHub Actions CI/CD pipeline with ECR push permissions. Grouped under `github-oidc/` folder.
+
+| Unit | Type | Purpose |
+|---|---|---|
+| `github-oidc/provider/` | OIDC Provider | Trusts `token.actions.githubusercontent.com` (one-time per account) |
+| `github-oidc/role/` | IAM Role | `lakehouse-at-scale-github-actions` — ECR push, restricted to main branch |
+
+After `terragrunt apply`, the role ARN output is the value for the `AWS_OIDC_ROLE_ARN` GitHub secret:
+```bash
+cd infra/non-prod/ap-southeast-1/github-oidc/role
+terragrunt output arn
+```
+
 ### ✅ Glue (`infra/modules/glue/`)
 
 Local module creating Glue Data Catalog databases for dbt schemas (staging, intermediate, marts) using `aws_glue_catalog_database` with `for_each`. Each database points to the S3 data lake bucket.
@@ -201,6 +278,48 @@ Dagster user code deployments:
 - `de-team`: dbt-spark, PipesEMRContainersClient, service account with IRSA
 - `sales-team`: dbt-athena, service account with IRSA
 
+### ✅ dbt Projects (Application Code Repo)
+
+Two dbt projects, one per team code location, both writing Iceberg tables to the same S3 Data Lake via Glue Data Catalog.
+
+| Project | Adapter | Compute | Schema Mapping |
+|---|---|---|---|
+| `de-team/dbt_project/` | dbt-spark (`method: session`) | Spark on EMR on EKS | staging, intermediate, marts → Glue DBs |
+| `sales-team/dbt_project/` | dbt-athena | Amazon Athena | staging, marts → Glue DBs |
+
+Both projects use `generate_schema_name` macro to map dbt schemas directly to Glue Data Catalog database names. Default materialization is `table` with `file_format: iceberg`.
+
+de-team sample models:
+- `stg_raw_orders` (staging, table) → `orders` (marts, incremental merge with `unique_key: order_id`)
+- `orders.yml` includes `meta.spark_config` for custom Spark resources (driver_cpu: 2, executor_instances: 4)
+
+sales-team sample models:
+- `stg_sales` (staging, table) — selects from raw sales source via Athena
+
+### ✅ Dagster Application Code — sales-team (`dbt-dagster-project/sales-team/dagster_project/`)
+
+Complete Dagster code location for the sales-team, using dbt-athena assets that run dbt directly on the Dagster user code pod via `DbtCliResource`. Queries execute on Amazon Athena — no Spark/EMR needed.
+
+| Component | File | Description |
+|---|---|---|
+| dbt Assets | `assets/dbt_assets.py` | `@dbt_assets` decorator, runs dbt via `DbtCliResource` (Athena) |
+| Python Assets | `assets/python_assets.py` | Lightweight assets running on Dagster pod |
+| Resources | `resources/__init__.py` | `DbtCliResource` factory for dbt-athena |
+| Definitions | `definitions.py` | Entry point registering all assets and resources |
+
+### ✅ CI/CD Pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`)
+
+GitHub Actions workflow that builds Code Images and updates ArgoCD on push to main. Only rebuilds the code location(s) whose files changed (path filters via `dorny/paths-filter`).
+
+| Job | Trigger | Description |
+|---|---|---|
+| `detect-changes` | Always | Determines which code locations have changed files |
+| `build-de-team` | `de-team/**` changed | `dagster-dbt prepare-and-package` → build Code Image → push ECR (tag: git SHA) |
+| `build-sales-team` | `sales-team/**` changed | Same flow for sales-team |
+| `update-argocd` | Any build succeeded | Updates image tag in ArgoCD Dagster Helm values → push commit → ArgoCD auto-syncs |
+
+Required GitHub secrets: `AWS_ACCOUNT_ID`, `AWS_OIDC_ROLE_ARN`, `ARGOCD_REPO`, `ARGOCD_REPO_PAT`.
+
 ### Docker Images (Application Code Repo)
 
 Four Dockerfiles following the Base Image + Code Image pattern:
@@ -211,6 +330,19 @@ Four Dockerfiles following the Base Image + Code Image pattern:
 | `de-team/Dockerfile.code` | `de-team-base:latest` | COPY dbt_project + spark_entrypoint + dagster_project |
 | `sales-team/Dockerfile.base` | `python:3.10-slim` | dbt-athena + dagster + dagster-aws + dagster-dbt |
 | `sales-team/Dockerfile.code` | `sales-team-base:latest` | COPY dbt_project + dagster_project |
+
+### ✅ Dagster Application Code — de-team (`dbt-dagster-project/de-team/dagster_project/`)
+
+Complete Dagster code location for the de-team, including dbt-spark assets that submit Spark jobs to EMR on EKS via Dagster Pipes, Python-only assets, and SparkConfigManager for per-model Spark resource configuration.
+
+| Component | File | Description |
+|---|---|---|
+| SparkConfigManager | `utils/spark_config.py` | Merges per-model Spark config with defaults, builds `start_job_run_params` |
+| dbt Assets | `assets/dbt_assets.py` | `@dbt_assets` decorator, submits Spark jobs via `PipesEMRContainersClient` |
+| Python Assets | `assets/python_assets.py` | Lightweight assets running on Dagster pod (no Spark) |
+| Spark Entrypoint | `spark_entrypoint/entrypoint.py` | Runs `dbt build` inside Spark Driver Pod, reports via Pipes |
+| Resources | `resources/__init__.py` | `PipesEMRContainersClient` factory with `PipesS3MessageReader` |
+| Definitions | `definitions.py` | Entry point registering all assets and resources |
 
 ## Terragrunt Usage
 
@@ -257,6 +389,19 @@ docker build -f Dockerfile.base -t sales-team-base:latest .
 # Build sales-team code image
 docker build -f Dockerfile.code -t sales-team-code:latest .
 ```
+
+## CI/CD (GitHub Actions)
+
+The CI/CD pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`) requires 4 GitHub repository secrets. Here's how to obtain each one:
+
+| Secret | How to obtain |
+|---|---|
+| `AWS_ACCOUNT_ID` | Your AWS account ID (`560503716668` for non-prod). Find it in the AWS Console top-right corner, or run `aws sts get-caller-identity --query Account --output text --profile non-prod` |
+| `AWS_OIDC_ROLE_ARN` | Managed by Terragrunt: `cd infra/non-prod/ap-southeast-1/github-oidc && terragrunt run --all apply`, then `cd role && terragrunt output arn`. This creates the OIDC provider + IAM role with ECR push permissions, restricted to main branch |
+| `ARGOCD_REPO` | The `owner/repo` path of your ArgoCD App Repo on GitHub (e.g. `thanhtt-demo/argocd-app-repo`). This is the repo that contains `argocd/dagster/values.yaml` where image tags are updated |
+| `ARGOCD_REPO_PAT` | A GitHub Personal Access Token (classic or fine-grained) with `contents: write` permission on the ArgoCD App Repo. Create one at GitHub → Settings → Developer settings → Personal access tokens. The CI/CD pipeline uses this to push image tag updates to the ArgoCD repo |
+
+To add these secrets: GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
 
 ## ArgoCD
 
