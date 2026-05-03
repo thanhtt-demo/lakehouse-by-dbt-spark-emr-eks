@@ -25,7 +25,7 @@ RUN pip3 install --no-cache-dir --ignore-installed --upgrade pip
 # Note: EMR 7.x ships Python 3.9 — dbt-spark 1.10+ and dagster-pipes 1.13+ require Python>=3.10,
 # so all packages are pinned to the latest versions supporting Python 3.9
 # ---------------------------------------------------------------------------------------------------------------------
-RUN pip3 install --no-cache-dir \
+RUN pip3 install --no-cache-dir --ignore-installed \
     "dbt-core>=1.9,<1.10" \
     "dbt-spark>=1.9,<1.10" \
     "dagster>=1.12,<1.13" \
