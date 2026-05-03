@@ -57,7 +57,7 @@ dagster:
       # -------------------------------------------------------------------------
       - name: de-team
         image:
-          repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/de-team-code"
+          repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
           tag: "5b1e835a"
           pullPolicy: Always
         dagsterApiGrpcArgs:
@@ -90,7 +90,7 @@ dagster:
         # -------------------------------------------------------------------------
 
         image:
-          repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/sales-team-code"
+          repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/sales-team-code"
           tag: "5b1e835a"
           pullPolicy: Always
         dagsterApiGrpcArgs:

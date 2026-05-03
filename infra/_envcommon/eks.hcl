@@ -43,6 +43,16 @@ inputs = {
       most_recent    = true
       before_compute = true
     }
+    aws-ebs-csi-driver = {
+      most_recent = true
+      configuration_values = jsonencode({
+        controller = {
+          nodeSelector = {
+            "role" = "system"
+          }
+        }
+      })
+    }
   }
 
   # Managed node group for system workloads (Dagster, ArgoCD, Karpenter controller)
@@ -58,6 +68,17 @@ inputs = {
       labels = {
         role                      = "system"
         "karpenter.sh/controller" = "true"
+      }
+
+      iam_role_additional_policies = {
+        AmazonEBSCSIDriverPolicy = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+      }
+
+      # Allow pods to access IMDS (required for EBS CSI driver and other AWS SDK calls)
+      metadata_options = {
+        http_endpoint               = "enabled"
+        http_tokens                 = "required"
+        http_put_response_hop_limit = 2
       }
     }
   }
