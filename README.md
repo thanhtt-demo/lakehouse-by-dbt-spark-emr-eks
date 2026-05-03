@@ -261,6 +261,8 @@ docker build -f Dockerfile.code -t sales-team-code:latest .
 ## ArgoCD
 
 ```bash
+Set-Alias -Name k -Value kubectl
+
 # Bootstrap — apply once to deploy everything
 kubectl apply -f argocd/app-of-apps.yaml
 
