@@ -86,7 +86,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install dagster-dbt CLI
-        run: pip install "dagster-dbt>=0.29,<1.0" "dagster-aws>=0.29,<1.0" "dbt-spark>=1.9,<1.10"
+        run: pip install "dagster-dbt>=0.29,<1.0" "dagster-aws>=0.29,<1.0" "dbt-spark[session]>=1.9,<1.10"
 
       - name: Prepare and package dbt manifest
         working-directory: dbt-dagster-project/de-team
