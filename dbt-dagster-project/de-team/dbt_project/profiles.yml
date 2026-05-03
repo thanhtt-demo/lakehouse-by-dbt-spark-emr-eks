@@ -13,8 +13,10 @@ de_team_lakehouse:
       schema: staging
     # CI target — used by dagster-dbt prepare-and-package in GitHub Actions.
     # dbt parse requires a valid profile but never connects to Spark.
+    # Uses method: http to avoid pyspark dependency in CI.
     ci:
       type: spark
-      method: session
+      method: http
       host: localhost
+      port: 10000
       schema: staging
