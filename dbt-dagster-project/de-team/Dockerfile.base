@@ -30,6 +30,9 @@ RUN yum install -y git && yum clean all
 # GIT_PYTHON_REFRESH=quiet suppresses git warning when running as Spark entrypoint (no git needed)
 # ---------------------------------------------------------------------------------------------------------------------
 ENV GIT_PYTHON_REFRESH=quiet
+ENV DAGSTER_HOME=/home/hadoop/dagster_home
+
+RUN mkdir -p /home/hadoop/dagster_home && chown hadoop:hadoop /home/hadoop/dagster_home
 
 RUN pip3 install --no-cache-dir --ignore-installed \
     "dbt-core>=1.9,<1.10" \
