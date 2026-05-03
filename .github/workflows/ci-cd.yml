@@ -90,7 +90,7 @@ jobs:
 
       - name: Prepare and package dbt manifest
         working-directory: dbt-dagster-project/de-team
-        run: dagster-dbt project prepare-and-package --file dagster_project/assets/dbt_assets.py
+        run: dagster-dbt project prepare-and-package --file dagster_project/assets/dbt_assets.py -d .
 
       - name: Build and push Code Image
         working-directory: dbt-dagster-project/de-team
@@ -145,7 +145,7 @@ jobs:
 
       - name: Prepare and package dbt manifest
         working-directory: dbt-dagster-project/sales-team
-        run: dagster-dbt project prepare-and-package --file dagster_project/assets/dbt_assets.py
+        run: dagster-dbt project prepare-and-package --file dagster_project/assets/dbt_assets.py -d .
 
       - name: Build and push Code Image
         working-directory: dbt-dagster-project/sales-team
