@@ -114,7 +114,7 @@ dagster:
         # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/sales-team-code"
-          tag: "7da74884"
+          tag: "79c6caaf"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
