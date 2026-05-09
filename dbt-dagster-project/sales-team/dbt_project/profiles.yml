@@ -10,7 +10,7 @@ sales_team_lakehouse:
   outputs:
     prod:
       type: athena
-      s3_staging_dir: "s3://lakehouse-at-scale-data-lake/staging/"
+      s3_staging_dir: "s3://lakehouse-at-scale-data-lake/warehouse/staging/"
       region_name: ap-southeast-1
       database: awsdatacatalog
       schema: staging
@@ -19,7 +19,7 @@ sales_team_lakehouse:
     # dbt parse requires a valid profile but never connects to Athena.
     ci:
       type: athena
-      s3_staging_dir: "s3://dummy/staging/"
+      s3_staging_dir: "s3://dummy/warehouse/staging/"
       region_name: ap-southeast-1
       database: awsdatacatalog
       schema: staging
