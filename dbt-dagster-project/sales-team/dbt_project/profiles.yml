@@ -3,6 +3,12 @@
 # Uses Amazon Athena as the compute engine to query Iceberg tables on S3.
 # Reads/writes to the same S3 Data Lake and Glue Data Catalog as de-team.
 # AWS credentials handled by IRSA (IAM Roles for Service Accounts) — no explicit keys needed.
+#
+# Path layout:
+# - s3_staging_dir: Athena query results (temp)
+# - s3_data_dir: Iceberg table data root (persistent)
+# - s3_data_naming=schema_table_unique: {s3_data_dir}/{schema}/{table}/{uuid}/
+#   The UUID suffix lets Iceberg HA swap table versions without PATH_ALREADY_EXISTS errors.
 # ---------------------------------------------------------------------------------------------------------------------
 
 sales_team_lakehouse:
@@ -10,7 +16,9 @@ sales_team_lakehouse:
   outputs:
     prod:
       type: athena
-      s3_staging_dir: "s3://lakehouse-at-scale-data-lake/warehouse/staging/"
+      s3_staging_dir: "s3://lakehouse-at-scale-data-lake/athena-results/"
+      s3_data_dir: "s3://lakehouse-at-scale-data-lake/warehouse/"
+      s3_data_naming: schema_table_unique
       region_name: ap-southeast-1
       database: awsdatacatalog
       schema: staging
@@ -19,7 +27,9 @@ sales_team_lakehouse:
     # dbt parse requires a valid profile but never connects to Athena.
     ci:
       type: athena
-      s3_staging_dir: "s3://dummy/warehouse/staging/"
+      s3_staging_dir: "s3://dummy/athena-results/"
+      s3_data_dir: "s3://dummy/warehouse/"
+      s3_data_naming: schema_table_unique
       region_name: ap-southeast-1
       database: awsdatacatalog
       schema: staging

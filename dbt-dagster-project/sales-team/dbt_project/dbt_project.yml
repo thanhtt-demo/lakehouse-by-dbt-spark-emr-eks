@@ -36,7 +36,7 @@ clean-targets:
 models:
   sales_team_lakehouse:
     +materialized: table
-    +file_format: iceberg
+    +table_type: iceberg
 
     staging:
       +schema: staging
