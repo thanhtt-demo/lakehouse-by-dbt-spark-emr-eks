@@ -50,4 +50,4 @@ def sales_team_dbt_assets(
     - No Spark/EMR — queries execute on Amazon Athena
     - dbt.cli().stream() yields events (materializations + asset checks) directly
     """
-    yield from dbt_cli.cli(["build"], context=context).stream()
+    yield from dbt_cli.cli(["--debug", "build"], context=context).stream()
