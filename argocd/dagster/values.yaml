@@ -67,7 +67,7 @@ dagster:
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-          tag: "5da089cd"
+          tag: "64ac082f"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
@@ -104,7 +104,7 @@ dagster:
         # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/sales-team-code"
-          tag: "a5888393"
+          tag: "64ac082f"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
