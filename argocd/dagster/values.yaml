@@ -57,7 +57,7 @@ dagster:
       create: true
       name: dagster-user-deployments
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260502235436821500000001"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260508234655934700000001"
     deployments:
       # -------------------------------------------------------------------------
 
