@@ -23,7 +23,7 @@ renamed as (
         unit_price,
         total_amount,
         region,
-        updated_at
+        cast(updated_at as timestamp(3)) as updated_at
     from source
 
 )
