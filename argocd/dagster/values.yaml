@@ -9,6 +9,15 @@
 # -- Official Dagster chart values (passed to dependency)
 dagster:
   # ---------------------------------------------------------------------------
+  # SERVICE ACCOUNT — shared SA for webserver + daemon (needs S3 access for compute logs)
+  # ---------------------------------------------------------------------------
+  serviceAccount:
+    create: true
+    name: dagster
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260508234655934700000001"
+
+  # ---------------------------------------------------------------------------
   # COMPUTE LOG MANAGER — persist stdout/stderr to S3 for viewing in Dagster UI
   # ---------------------------------------------------------------------------
   computeLogManager:
