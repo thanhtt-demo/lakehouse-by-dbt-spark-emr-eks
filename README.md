@@ -373,22 +373,24 @@ cd infra/non-prod/ap-southeast-1
 terragrunt run --all destroy
 ```
 
-## Docker Images
+## Docker Images (Local Testing Only)
+
+Base Images are built and pushed to ECR by the Terraform `docker-image` module (`terragrunt apply` in `infra/non-prod/ap-southeast-1/docker-image/`). Code Images are built by the CI/CD pipeline on push to main. The commands below are only needed for local testing before pushing.
 
 ```bash
-# Build de-team base image
+# Build de-team base image locally
 cd dbt-dagster-project/de-team
 docker build -f Dockerfile.base -t de-team-base:latest .
 
-# Build de-team code image
-docker build -f Dockerfile.code -t de-team-code:latest .
+# Build de-team code image locally
+docker build -f Dockerfile.code --build-arg BASE_IMAGE=de-team-base:latest -t de-team-code:latest .
 
-# Build sales-team base image
+# Build sales-team base image locally
 cd dbt-dagster-project/sales-team
 docker build -f Dockerfile.base -t sales-team-base:latest .
 
-# Build sales-team code image
-docker build -f Dockerfile.code -t sales-team-code:latest .
+# Build sales-team code image locally
+docker build -f Dockerfile.code --build-arg BASE_IMAGE=sales-team-base:latest -t sales-team-code:latest .
 ```
 
 ## CI/CD (GitHub Actions)
@@ -405,6 +407,16 @@ The CI/CD pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`) requires 
 To add these secrets: GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
 
 ## ArgoCD
+
+After Terraform modules are applied, populate ArgoCD Helm values with actual infrastructure outputs:
+
+```bash
+# Populate placeholders in ArgoCD values from Terraform outputs (creates a PR)
+# Run from repo root in PowerShell:
+powershell -ExecutionPolicy Bypass -File scripts/populate-argocd-values.ps1
+```
+
+Then access ArgoCD and bootstrap:
 
 ```bash
 Set-Alias -Name k -Value kubectl
@@ -423,6 +435,38 @@ helm template argocd/karpenter/
 helm dependency build argocd/dagster/
 helm template argocd/dagster/
 ```
+
+## Cleanup (Destroy All Resources)
+
+To destroy all resources and stop billing:
+
+```bash
+# 1. Remove ArgoCD-managed K8s resources
+kubectl delete -f argocd/app-of-apps.yaml --ignore-not-found
+kubectl delete namespace dagster --ignore-not-found
+kubectl delete namespace spark --ignore-not-found
+kubectl delete nodeclaim --all --ignore-not-found
+kubectl delete nodepool --all --ignore-not-found
+
+# 2. Destroy all Terraform/Terragrunt resources (auto-resolves dependency order)
+cd infra/non-prod/ap-southeast-1
+terragrunt run --all destroy
+
+# 3. Terminate orphaned Karpenter EC2 instances (not managed by Terraform)
+aws ec2 describe-instances \
+  --filters "Name=tag:karpenter.sh/discovery,Values=lakehouse-at-scale-eks" "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].InstanceId" \
+  --output text --profile non-prod --region ap-southeast-1
+# Then: aws ec2 terminate-instances --instance-ids <IDs> --profile non-prod --region ap-southeast-1
+
+# 4. (Optional) Delete ECR images to avoid storage costs
+aws ecr batch-delete-image --repository-name lakehouse-at-scale/de-team-base --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
+aws ecr batch-delete-image --repository-name lakehouse-at-scale/de-team-code --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
+aws ecr batch-delete-image --repository-name lakehouse-at-scale/sales-team-base --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
+aws ecr batch-delete-image --repository-name lakehouse-at-scale/sales-team-code --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
+```
+
+If `terragrunt run --all destroy` gets stuck on EKS, ensure all K8s namespaces and node claims are deleted first. EKS cluster deletion requires all managed node groups and Fargate profiles to be removed, which Terraform handles automatically.
 
 ## Related Repositories
 

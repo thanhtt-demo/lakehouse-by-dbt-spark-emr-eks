@@ -9,7 +9,7 @@ version: 2
 sources:
   - name: raw
     description: "Raw data source tables in Glue Data Catalog"
-    database: staging
+    database: awsdatacatalog
     schema: raw
     tables:
       - name: raw_sales

@@ -12,7 +12,7 @@ sales_team_lakehouse:
       type: athena
       s3_staging_dir: "s3://lakehouse-at-scale-pipes/athena-staging/"
       region_name: ap-southeast-1
-      database: staging
+      database: awsdatacatalog
       schema: staging
       work_group: primary
     # CI target — used by dagster-dbt prepare-and-package in GitHub Actions.
@@ -21,6 +21,6 @@ sales_team_lakehouse:
       type: athena
       s3_staging_dir: "s3://dummy/athena-staging/"
       region_name: ap-southeast-1
-      database: staging
+      database: awsdatacatalog
       schema: staging
       work_group: primary

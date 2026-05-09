@@ -21,38 +21,21 @@ $REPO_ROOT = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path
 function Get-TerragruntOutput {
     param([string]$ModulePath, [string]$OutputName)
     $fullPath = Join-Path $REPO_ROOT $ModulePath
-    $tmpOut = [System.IO.Path]::GetTempFileName()
+    $originalLocation = Get-Location
     $tmpErr = [System.IO.Path]::GetTempFileName()
     try {
-        $proc = Start-Process -FilePath "terragrunt" `
-            -ArgumentList "output","-raw","--terragrunt-no-color",$OutputName `
-            -WorkingDirectory $fullPath `
-            -RedirectStandardOutput $tmpOut `
-            -RedirectStandardError $tmpErr `
-            -NoNewWindow -Wait -PassThru
-        $stdout = if (Test-Path $tmpOut) { Get-Content $tmpOut -Raw } else { "" }
-        $stderr = if (Test-Path $tmpErr) { Get-Content $tmpErr -Raw } else { "" }
-        if ($stdout) { $stdout = $stdout.Trim() }
-        if ($stderr) { $stderr = $stderr.Trim() }
-        # terragrunt output -raw writes value to stdout
-        # but some versions write it to stderr along with logs
-        if (-not [string]::IsNullOrWhiteSpace($stdout)) {
-            return $stdout
+        Set-Location $fullPath
+        # Use cmd /c to avoid PowerShell treating stderr as terminating error
+        $result = cmd /c "terragrunt output -raw $OutputName 2>`"$tmpErr`""
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($result)) {
+            $stderrContent = if (Test-Path $tmpErr) { Get-Content $tmpErr -Raw } else { "" }
+            throw "terragrunt output failed for $OutputName in $ModulePath (exit: $LASTEXITCODE)`nstderr: $stderrContent"
         }
-        # Fallback: parse stderr for the actual value (last non-empty line without timestamp)
-        if ($stderr) {
-            $lines = $stderr -split "`n" | ForEach-Object { $_.Trim() } | Where-Object {
-                $_ -and $_ -notmatch "^\d{2}:\d{2}:\d{2}" -and $_ -notmatch "^time=" -and $_ -notmatch "^WARN" -and $_ -notmatch "^INFO" -and $_ -notmatch "^ERROR"
-            }
-            if ($lines) {
-                $val = ($lines | Select-Object -Last 1).Trim()
-                if (-not [string]::IsNullOrWhiteSpace($val)) { return $val }
-            }
-        }
-        throw "terragrunt output empty for $OutputName in $ModulePath`nstdout: $stdout`nstderr: $stderr"
+        return $result.Trim()
     }
     finally {
-        Remove-Item $tmpOut, $tmpErr -Force -ErrorAction SilentlyContinue
+        Set-Location $originalLocation
+        Remove-Item $tmpErr -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -75,76 +58,91 @@ $AWS_ACCOUNT_ID = (aws sts get-caller-identity --query Account --output text --p
 Write-Host "    aws_account_id=$AWS_ACCOUNT_ID"
 
 # Dagster IRSA role ARNs
-$DE_TEAM_IRSA_ROLE_ARN = Get-TerragruntOutput "$INFRA_DIR\dagster-irsa\de-team-role" "iam_role_arn"
-$SALES_TEAM_IRSA_ROLE_ARN = Get-TerragruntOutput "$INFRA_DIR\dagster-irsa\sales-team-role" "iam_role_arn"
+$DE_TEAM_IRSA_ROLE_ARN = Get-TerragruntOutput "$INFRA_DIR\dagster-irsa\de-team-role" "arn"
+$SALES_TEAM_IRSA_ROLE_ARN = Get-TerragruntOutput "$INFRA_DIR\dagster-irsa\sales-team-role" "arn"
 Write-Host "    de_team_irsa_role_arn=$DE_TEAM_IRSA_ROLE_ARN"
 Write-Host "    sales_team_irsa_role_arn=$SALES_TEAM_IRSA_ROLE_ARN"
 
 Write-Host ""
-Write-Host "==> Replacing placeholders in ArgoCD files..."
+Write-Host "==> Updating ArgoCD files with Terraform outputs..."
 
-$FILES = @(
-    "$REPO_ROOT\argocd\karpenter\values.yaml",
-    "$REPO_ROOT\argocd\karpenter\templates\nodepool-spark-executors.yaml",
-    "$REPO_ROOT\argocd\karpenter\templates\nodepool-spark-drivers.yaml",
-    "$REPO_ROOT\argocd\dagster\values.yaml"
-)
+# --- argocd/karpenter/values.yaml ---
+$karpenterValues = "$REPO_ROOT\argocd\karpenter\values.yaml"
+if (Test-Path $karpenterValues) {
+    $content = Get-Content $karpenterValues -Raw
+    $content = $content -replace '(clusterName:\s*)"[^"]*"', "`$1`"$CLUSTER_NAME`""
+    $content = $content -replace '(clusterEndpoint:\s*)"[^"]*"', "`$1`"$CLUSTER_ENDPOINT`""
+    $content = $content -replace '(interruptionQueue:\s*)"[^"]*"', "`$1`"$INTERRUPTION_QUEUE`""
+    $content = $content -replace '(eks\.amazonaws\.com/role-arn:\s*)"[^"]*"', "`$1`"$KARPENTER_CONTROLLER_ROLE_ARN`""
+    Set-Content $karpenterValues -Value $content -NoNewline
+    Write-Host "    OK $karpenterValues"
+}
 
-foreach ($file in $FILES) {
-    if (-not (Test-Path $file)) {
-        Write-Host "    WARN: $file not found, skipping"
-        continue
-    }
+# --- argocd/karpenter/templates/nodepool-spark-drivers.yaml ---
+$driversYaml = "$REPO_ROOT\argocd\karpenter\templates\nodepool-spark-drivers.yaml"
+if (Test-Path $driversYaml) {
+    $content = Get-Content $driversYaml -Raw
+    $content = $content -replace '(karpenter\.sh/discovery:\s*)"[^"]*"', "`$1`"$CLUSTER_NAME`""
+    Set-Content $driversYaml -Value $content -NoNewline
+    Write-Host "    OK $driversYaml"
+}
 
-    $content = Get-Content $file -Raw
-    $content = $content -replace "PLACEHOLDER_CLUSTER_NAME", $CLUSTER_NAME
-    $content = $content -replace "PLACEHOLDER_CLUSTER_ENDPOINT", $CLUSTER_ENDPOINT
-    $content = $content -replace "PLACEHOLDER_INTERRUPTION_QUEUE", $INTERRUPTION_QUEUE
-    $content = $content -replace "PLACEHOLDER_KARPENTER_CONTROLLER_ROLE_ARN", $KARPENTER_CONTROLLER_ROLE_ARN
-    $content = $content -replace "PLACEHOLDER_AWS_ACCOUNT_ID", $AWS_ACCOUNT_ID
-    $content = $content -replace "PLACEHOLDER_DE_TEAM_IRSA_ROLE_ARN", $DE_TEAM_IRSA_ROLE_ARN
-    $content = $content -replace "PLACEHOLDER_SALES_TEAM_IRSA_ROLE_ARN", $SALES_TEAM_IRSA_ROLE_ARN
-    Set-Content $file -Value $content -NoNewline
+# --- argocd/karpenter/templates/nodepool-spark-executors.yaml ---
+$executorsYaml = "$REPO_ROOT\argocd\karpenter\templates\nodepool-spark-executors.yaml"
+if (Test-Path $executorsYaml) {
+    $content = Get-Content $executorsYaml -Raw
+    $content = $content -replace '(karpenter\.sh/discovery:\s*)"[^"]*"', "`$1`"$CLUSTER_NAME`""
+    Set-Content $executorsYaml -Value $content -NoNewline
+    Write-Host "    OK $executorsYaml"
+}
 
-    Write-Host "    OK $file"
+# --- argocd/dagster/values.yaml ---
+$dagsterValues = "$REPO_ROOT\argocd\dagster\values.yaml"
+if (Test-Path $dagsterValues) {
+    $content = Get-Content $dagsterValues -Raw
+    # IRSA role ARN for user-deployments service account
+    $content = $content -replace '(eks\.amazonaws\.com/role-arn:\s*)"[^"]*"', "`$1`"$DE_TEAM_IRSA_ROLE_ARN`""
+    # ECR image repository URLs (replace account ID in existing ECR URLs)
+    $content = $content -replace '(\d{12})(\.dkr\.ecr\.)', "$AWS_ACCOUNT_ID`$2"
+    Set-Content $dagsterValues -Value $content -NoNewline
+    Write-Host "    OK $dagsterValues"
 }
 
 Write-Host ""
 Write-Host "==> Creating pull request..."
 
-$BRANCH = "chore/populate-argocd-values-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$BRANCH = "chore/update-argocd-values-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 git checkout -b $BRANCH
 git add argocd/
-git commit -m "chore: populate ArgoCD values from Terraform outputs
+git commit -m "chore: update ArgoCD values from Terraform outputs
 
-Replaced PLACEHOLDER_* values with actual infrastructure outputs:
+Updated infrastructure values from current Terraform state:
 - Cluster: $CLUSTER_NAME
 - Karpenter IAM role, SQS queue
-- Dagster IRSA roles (de-team, sales-team)
-- ECR repository URLs (account: $AWS_ACCOUNT_ID)"
+- Dagster IRSA role (de-team)
+- ECR account ID: $AWS_ACCOUNT_ID"
 
 git push -u origin $BRANCH
 
 gh pr create `
-    --title "chore: populate ArgoCD values from Terraform outputs" `
+    --title "chore: update ArgoCD values from Terraform outputs" `
     --body "## What
-Replaced all ``PLACEHOLDER_*`` values in ArgoCD Helm charts with actual Terraform outputs.
+Updated ArgoCD Helm chart values with current Terraform outputs.
 
-## Placeholders replaced
-| Placeholder | Value |
+## Values applied
+| Key | Value |
 |---|---|
-| ``PLACEHOLDER_CLUSTER_NAME`` | ``$CLUSTER_NAME`` |
-| ``PLACEHOLDER_CLUSTER_ENDPOINT`` | ``$CLUSTER_ENDPOINT`` |
-| ``PLACEHOLDER_INTERRUPTION_QUEUE`` | ``$INTERRUPTION_QUEUE`` |
-| ``PLACEHOLDER_KARPENTER_CONTROLLER_ROLE_ARN`` | ``$KARPENTER_CONTROLLER_ROLE_ARN`` |
-| ``PLACEHOLDER_AWS_ACCOUNT_ID`` | ``$AWS_ACCOUNT_ID`` |
-| ``PLACEHOLDER_DE_TEAM_IRSA_ROLE_ARN`` | ``$DE_TEAM_IRSA_ROLE_ARN`` |
-| ``PLACEHOLDER_SALES_TEAM_IRSA_ROLE_ARN`` | ``$SALES_TEAM_IRSA_ROLE_ARN`` |
+| clusterName | ``$CLUSTER_NAME`` |
+| clusterEndpoint | ``$CLUSTER_ENDPOINT`` |
+| interruptionQueue | ``$INTERRUPTION_QUEUE`` |
+| karpenter role-arn | ``$KARPENTER_CONTROLLER_ROLE_ARN`` |
+| AWS Account ID | ``$AWS_ACCOUNT_ID`` |
+| de-team IRSA role | ``$DE_TEAM_IRSA_ROLE_ARN`` |
 
 ## Files changed
 - ``argocd/karpenter/values.yaml``
-- ``argocd/karpenter/templates/nodepool-spark-executors.yaml``
 - ``argocd/karpenter/templates/nodepool-spark-drivers.yaml``
+- ``argocd/karpenter/templates/nodepool-spark-executors.yaml``
 - ``argocd/dagster/values.yaml``
 
 Generated by ``scripts/populate-argocd-values.ps1``" `
