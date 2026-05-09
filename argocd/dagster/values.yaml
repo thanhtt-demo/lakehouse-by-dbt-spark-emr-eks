@@ -10,17 +10,13 @@
 dagster:
   # ---------------------------------------------------------------------------
   # COMPUTE LOG MANAGER — persist stdout/stderr to S3 for viewing in Dagster UI
+  # Uses NoOpComputeLogManager by default; override with S3 below.
   # ---------------------------------------------------------------------------
   computeLogs:
-    enabled: true
-    custom:
-      module: dagster_aws.s3.compute_log_manager
-      class: S3ComputeLogManager
-      config:
-        bucket: lakehouse-at-scale-data-lake
-        prefix: dagster-compute-logs/
-        region: ap-southeast-1
-        skip_empty_files: true
+    s3:
+      bucket: lakehouse-at-scale-data-lake
+      prefix: dagster-compute-logs/
+      region: ap-southeast-1
 
   # ---------------------------------------------------------------------------
 
