@@ -7,11 +7,11 @@
 resource "aws_glue_catalog_database" "this" {
   for_each = toset(var.database_names)
 
-  name         = "${var.name}_${each.value}"
+  name         = each.value
   description  = "Glue Data Catalog database for dbt ${each.value} schema"
   location_uri = "s3://${var.data_lake_bucket}/warehouse/${each.value}/"
 
   tags = merge(var.tags, {
-    Name = "${var.name}_${each.value}"
+    Name = each.value
   })
 }

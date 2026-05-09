@@ -44,6 +44,8 @@ dependency "sales_policy" {
 inputs = {
   name = "lakehouse-at-scale-dagster-de-team"
 
+  force_detach_policies = true
+
   oidc_providers = {
     this = {
       provider_arn               = dependency.eks.outputs.oidc_provider_arn
