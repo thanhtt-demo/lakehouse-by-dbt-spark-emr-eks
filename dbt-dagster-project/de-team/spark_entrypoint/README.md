@@ -113,10 +113,21 @@ The Spark driver writes to four log sinks simultaneously — each with a differe
 |---|---|---|---|
 | `s3://lakehouse-at-scale-spark-logs/emr-on-eks/<vc>/jobs/<job-id>/...` | S3 | Only after job ends | Post-mortem, archive |
 | `/emr-on-eks/lakehouse-at-scale` | CloudWatch Logs | ~30–60 s | Near-real-time tail + search |
-| Pipes messages → Dagster Events tab | Dagster UI | ~10–20 s (poll interval) | Streaming inside Dagster |
+| Pipes messages → Dagster **Events** tab | Dagster UI | ~10–20 s (poll interval) | Streaming Spark driver stdio inside Dagster |
 | `kubectl logs -f spark-<job-id>-driver` | Terminal | Real-time (<1 s) | Live debugging |
 
 **EMR on EKS uploads the S3 archive only once, at job shutdown** — the fluentd sidecar on the job pod buffers the log files locally and ships them when the container exits. Don't rely on S3 for streaming; reach for CloudWatch or `kubectl logs -f` instead.
+
+### Dagster stdout/stderr tabs vs Events tab
+
+Two different channels feed the Dagster UI. They look similar but capture different processes:
+
+| Dagster UI location | What it captures | Storage | Latency |
+|---|---|---|---|
+| **stdout** / **stderr** tabs | The Dagster **run pod** Python process (orchestration side: submit params, poll EMR) | `S3ComputeLogManager` → `s3://lakehouse-at-scale-data-lake/dagster-compute-logs/...` | `upload_interval: 30 s` while the step is running; final flush at step end |
+| **Events** tab | The **Spark driver pod** stdio (dbt logs, compiled SQL, test output) | `PipesS3MessageWriter` → `s3://lakehouse-at-scale-pipes/...` | ~10–20 s (Pipes poll interval) |
+
+For Pipes-based assets (`de_team_dbt_assets`) the run pod does very little work itself — it mostly submits and waits. Almost everything interesting (dbt compile, Spark execute) happens on the Spark driver and arrives through the Events tab, not the stdout tab. If the stdout tab looks empty or trails until job end, that's expected — it's the run pod channel, and the run pod has little to print.
 
 ```powershell
 # Tail CloudWatch for a specific run
@@ -129,7 +140,7 @@ aws logs tail /emr-on-eks/lakehouse-at-scale `
 kubectl logs -f -n spark <spark-job-id>-driver
 ```
 
-If Pipes events in Dagster arrive in big chunks near the end of the run instead of streaming as dbt prints, dbt or Python may be buffering stdout. Two ways to mitigate:
+If Pipes events in Dagster arrive in big chunks near the end of the run instead of streaming as dbt prints, dbt or Python may be buffering stdout. Two mitigations are already in place:
 
-- Set `DBT_DEBUG=1` on the user-deployment — forces dbt to emit events verbosely (helps flush pressure).
-- Pass `spark.kubernetesDriverEnv.PYTHONUNBUFFERED=1` through `spark_submit_parameters` to disable Python buffering inside the driver.
+- `spark.kubernetes.driverEnv.PYTHONUNBUFFERED=1` is set in `SparkConfigManager.build_start_job_run_params`, so the driver's Python stdio flushes line-by-line.
+- `DBT_DEBUG=1` in `values.yaml` makes dbt emit verbose events, keeping log pressure steady rather than bursty.

@@ -18,6 +18,10 @@ dagster:
       eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260510061626768400000001"
   # ---------------------------------------------------------------------------
   # COMPUTE LOG MANAGER — persist stdout/stderr to S3 for viewing in Dagster UI
+  # upload_interval = 30 so the stdout/stderr tabs stream every 30 s during a
+  # running step instead of only appearing when the step finishes. This is the
+  # log channel for the Dagster run pod itself; Spark driver stdio streams via
+  # Dagster Pipes into the Events tab (polls ~10-20 s).
   # ---------------------------------------------------------------------------
   computeLogManager:
     type: S3ComputeLogManager
@@ -26,6 +30,7 @@ dagster:
         bucket: "lakehouse-at-scale-data-lake"
         prefix: "dagster-compute-logs/"
         region: "ap-southeast-1"
+        upload_interval: 30
   # ---------------------------------------------------------------------------
 
   # DAGSTER WEBSERVER
