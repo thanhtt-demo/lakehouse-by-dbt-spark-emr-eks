@@ -110,9 +110,9 @@ dagster:
           - name: DAGSTER_HOME
             value: "/home/hadoop/dagster_home"
           - name: EMR_VIRTUAL_CLUSTER_ID
-            value: "axns0wditvae14doyiq3lleba"
+            value: "7rkf3p438vux13mtz4ul921a4"
           - name: EMR_EXECUTION_ROLE_ARN
-            value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260502235355283900000001"
+            value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260510061545521500000001"
           - name: SPARK_CODE_IMAGE_URI
             value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
       # -------------------------------------------------------------------------

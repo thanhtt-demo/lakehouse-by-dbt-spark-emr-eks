@@ -63,6 +63,12 @@ $SALES_TEAM_IRSA_ROLE_ARN = Get-TerragruntOutput "$INFRA_DIR\dagster-irsa\sales-
 Write-Host "    de_team_irsa_role_arn=$DE_TEAM_IRSA_ROLE_ARN"
 Write-Host "    sales_team_irsa_role_arn=$SALES_TEAM_IRSA_ROLE_ARN"
 
+# EMR Virtual Cluster outputs (consumed by de-team Dagster pod to submit Spark jobs)
+$EMR_VIRTUAL_CLUSTER_ID = Get-TerragruntOutput "$INFRA_DIR\emr-virtual-cluster" "virtual_cluster_id"
+$EMR_EXECUTION_ROLE_ARN = Get-TerragruntOutput "$INFRA_DIR\emr-virtual-cluster" "job_execution_role_arn"
+Write-Host "    emr_virtual_cluster_id=$EMR_VIRTUAL_CLUSTER_ID"
+Write-Host "    emr_execution_role_arn=$EMR_EXECUTION_ROLE_ARN"
+
 Write-Host ""
 Write-Host "==> Updating ArgoCD files with Terraform outputs..."
 
@@ -104,6 +110,9 @@ if (Test-Path $dagsterValues) {
     $content = $content -replace '(eks\.amazonaws\.com/role-arn:\s*)"[^"]*"', "`$1`"$DE_TEAM_IRSA_ROLE_ARN`""
     # ECR image repository URLs (replace account ID in existing ECR URLs)
     $content = $content -replace '(\d{12})(\.dkr\.ecr\.)', "$AWS_ACCOUNT_ID`$2"
+    # EMR Virtual Cluster ID + execution role ARN (de-team env vars)
+    $content = $content -replace '(?ms)(-\s+name:\s+EMR_VIRTUAL_CLUSTER_ID\s*\r?\n\s+value:\s*)"[^"]*"', "`$1`"$EMR_VIRTUAL_CLUSTER_ID`""
+    $content = $content -replace '(?ms)(-\s+name:\s+EMR_EXECUTION_ROLE_ARN\s*\r?\n\s+value:\s*)"[^"]*"', "`$1`"$EMR_EXECUTION_ROLE_ARN`""
     Set-Content $dagsterValues -Value $content -NoNewline
     Write-Host "    OK $dagsterValues"
 }
@@ -120,6 +129,8 @@ Updated infrastructure values from current Terraform state:
 - Cluster: $CLUSTER_NAME
 - Karpenter IAM role, SQS queue
 - Dagster IRSA role (de-team)
+- EMR Virtual Cluster: $EMR_VIRTUAL_CLUSTER_ID
+- EMR execution role: $EMR_EXECUTION_ROLE_ARN
 - ECR account ID: $AWS_ACCOUNT_ID"
 
 git push -u origin $BRANCH
@@ -138,6 +149,8 @@ Updated ArgoCD Helm chart values with current Terraform outputs.
 | karpenter role-arn | ``$KARPENTER_CONTROLLER_ROLE_ARN`` |
 | AWS Account ID | ``$AWS_ACCOUNT_ID`` |
 | de-team IRSA role | ``$DE_TEAM_IRSA_ROLE_ARN`` |
+| EMR Virtual Cluster ID | ``$EMR_VIRTUAL_CLUSTER_ID`` |
+| EMR execution role ARN | ``$EMR_EXECUTION_ROLE_ARN`` |
 
 ## Files changed
 - ``argocd/karpenter/values.yaml``
