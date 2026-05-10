@@ -1,7 +1,11 @@
 # Keep image lean and avoid baking in host-user-owned artifacts
 # that would cause permission errors at runtime.
+#
+# NOTE: dbt_project/target/ is INTENTIONALLY NOT ignored.
+# CI runs `dagster-dbt project prepare-and-package` before docker build,
+# which writes target/manifest.json. The Dagster user-deployment pod needs
+# this manifest at image load time (@dbt_assets decorator).
 dbt_project/logs/
-dbt_project/target/
 dbt_project/dbt_packages/
 dbt_project/.user.yml
 **/__pycache__/
