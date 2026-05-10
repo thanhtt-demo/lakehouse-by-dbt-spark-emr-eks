@@ -121,6 +121,14 @@ dagster:
             value: "s3://lakehouse-at-scale-spark-logs/emr-on-eks/"
           - name: SPARK_CLOUDWATCH_LOG_GROUP
             value: "/emr-on-eks/lakehouse-at-scale"
+          # Set to "1" (uncomment) to run dbt in debug mode inside the Spark
+          # driver — logs every compiled SQL statement + timings to dbt.log and
+          # surfaces them as `executed_sql` / `compiled_sql` metadata in Dagster.
+          # Leave disabled in prod: the extra payload travels through Pipes S3
+          # messages. Compiled + executed SQL is ALWAYS reported regardless of
+          # this flag; it only controls the verbose dbt.log stream.
+          # - name: DBT_DEBUG
+          #   value: "1"
       # -------------------------------------------------------------------------
       - name: sales-team
         # -------------------------------------------------------------------------
