@@ -393,6 +393,50 @@ docker build -f Dockerfile.base -t sales-team-base:latest .
 docker build -f Dockerfile.code --build-arg BASE_IMAGE=sales-team-base:latest -t sales-team-code:latest .
 ```
 
+## Smoke Testing de-team Images
+
+Two scripts help verify the de-team Base + Code image before (or without) going through the full Dagster → EMR run path. Use these when iterating on `Dockerfile.base`, Python dependencies, or Spark configuration.
+
+### Local build + import check (`scripts/smoke-test-de-team-image.local.sh`)
+
+Builds the Base Image and runs a quick `import` test using `python3.11` (matching EMR on EKS 7.13's `PYSPARK_PYTHON`). No ECR push, no AWS calls.
+
+```bash
+# Default tag (de-team-base:local-smoke)
+./scripts/smoke-test-de-team-image.local.sh
+
+# Custom tag
+./scripts/smoke-test-de-team-image.local.sh my-tag
+```
+
+Use this as the fast feedback loop when changing `Dockerfile.base` or pinned package versions. Script runs in Git Bash / WSL / Linux.
+
+### Remote EMR on EKS job submit (`scripts/smoke-test-de-team-image.ps1`)
+
+Submits a minimal Spark job to the existing EMR Virtual Cluster using a Code Image tag already in ECR. Verifies end-to-end that the Spark driver can:
+
+- Start with Iceberg extensions from `--jars`
+- Import `dagster_pipes`, `dbt`, `boto3` in python3.11
+- Create and stop a `SparkSession`
+
+Does not build or push images — use the local script (or CI) first. Does not touch the running Dagster deployment.
+
+```powershell
+# Default: resolves the latest tag in lakehouse-at-scale/de-team-code
+.\scripts\smoke-test-de-team-image.ps1
+
+# Pin a specific tag already in ECR
+.\scripts\smoke-test-de-team-image.ps1 -Tag 81421f60
+
+# Override defaults (e.g. after VC or execution role is recreated)
+.\scripts\smoke-test-de-team-image.ps1 `
+    -Tag 81421f60 `
+    -VirtualClusterId <vc-id> `
+    -ExecutionRoleArn <role-arn>
+```
+
+The script uploads an inline smoke script to `s3://lakehouse-at-scale-pipes/smoke-tests/`, submits the EMR job, then polls until the job reaches a terminal state. `COMPLETED` = pass; on `FAILED` it prints `failureReason` + `stateDetails`.
+
 ## CI/CD (GitHub Actions)
 
 The CI/CD pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`) requires 4 GitHub repository secrets. Here's how to obtain each one:

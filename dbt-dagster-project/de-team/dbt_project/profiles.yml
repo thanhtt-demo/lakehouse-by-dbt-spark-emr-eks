@@ -10,6 +10,10 @@ de_team_lakehouse:
     prod:
       type: spark
       method: session
+      # `host` is required by the dbt-spark validator even when method: session
+      # runs in-process against an existing SparkSession. The value is ignored
+      # at runtime, so any placeholder works.
+      host: localhost
       schema: staging
     # CI target — used by dagster-dbt prepare-and-package in GitHub Actions.
     # dbt parse requires a valid profile but never connects to Spark.

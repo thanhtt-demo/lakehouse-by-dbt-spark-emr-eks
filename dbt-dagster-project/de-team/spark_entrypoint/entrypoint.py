@@ -61,10 +61,29 @@ def main() -> None:
         if run_results:
             _report_test_results(pipes, run_results)
 
-        # 5. Fail fast if dbt failed
+        # 5. Fail fast if dbt failed — surface the actual dbt error so it shows
+        #    up in Dagster logs (not just the generic "dbt build failed").
         if not result.success:
-            pipes.log.error(f"dbt {dbt_command} failed for model {model_name}")
-            raise RuntimeError(f"dbt {dbt_command} failed for model {model_name}")
+            error_lines: list[str] = []
+            # dbt captures an exception on the runner result when the CLI failed
+            # before emitting run_results (e.g. parse errors, connection errors).
+            if getattr(result, "exception", None):
+                error_lines.append(f"dbtRunner exception: {result.exception!r}")
+            # When the command actually ran models, each node result carries its
+            # own status + message; surface every non-pass row.
+            if run_results:
+                for r in run_results.get("results", []):
+                    status = r.get("status", "")
+                    if status in ("success", "pass"):
+                        continue
+                    uid = r.get("unique_id", "")
+                    msg = r.get("message", "") or ""
+                    error_lines.append(f"[{status}] {uid}: {msg}")
+            detail = "; ".join(error_lines) if error_lines else "no detail from dbt"
+            pipes.log.error(f"dbt {dbt_command} failed for {model_name}: {detail}")
+            raise RuntimeError(
+                f"dbt {dbt_command} failed for model {model_name}: {detail}"
+            )
 
         # 6. Report materialization with monitoring metadata
         region = os.getenv("AWS_REGION", "ap-southeast-1")
