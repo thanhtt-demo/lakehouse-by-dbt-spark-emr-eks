@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Optional
 
 import boto3
 from dagster_pipes import PipesS3MessageWriter, open_dagster_pipes
@@ -28,7 +29,7 @@ def main() -> None:
         message_writer=PipesS3MessageWriter(client=s3_client),
     ) as pipes:
         model_name = pipes.get_extra("model_name")
-        dbt_command = pipes.get_extra("dbt_command", "build")
+        dbt_command = pipes.get_extra("dbt_command")
         pipes.log.info(f"Running dbt {dbt_command} --select {model_name}")
 
         # 1. Get or create SparkSession (already available from spark-submit)
