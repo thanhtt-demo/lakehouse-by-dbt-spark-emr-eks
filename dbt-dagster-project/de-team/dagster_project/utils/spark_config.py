@@ -191,6 +191,11 @@ class SparkConfigManager(dg.ConfigurableResource):
             f"--conf spark.executor.cores={res.executor_cpu}",
             f"--conf spark.executor.memory={res.executor_memory}",
             f"--conf spark.executor.instances={res.executor_instances}",
+            # Disable Python stdio buffering in the Spark driver so dbt's log
+            # lines reach the Pipes stdio forwarder as they happen, not in one
+            # big flush at interpreter shutdown. Delay from ~minutes (buffered)
+            # to ~10-20 s (Pipes S3 poll interval).
+            "--conf spark.kubernetes.driverEnv.PYTHONUNBUFFERED=1",
         ]
 
         # Append all spark_properties as --conf flags

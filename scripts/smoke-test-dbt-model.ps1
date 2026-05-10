@@ -200,6 +200,9 @@ $sparkParams = @(
     "--conf spark.executor.cores=1",
     "--conf spark.executor.memory=4g",
     "--conf spark.executor.instances=1",
+    # Unbuffered Python stdio so dbt log lines stream in near real-time
+    # via the Pipes stdio forwarder instead of flushing only at shutdown.
+    "--conf spark.kubernetes.driverEnv.PYTHONUNBUFFERED=1",
     # Wrap Spark's session catalog with Iceberg so unqualified `schema.table`
     # refs in dbt resolve through Glue (matches Athena-registered tables).
     "--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
