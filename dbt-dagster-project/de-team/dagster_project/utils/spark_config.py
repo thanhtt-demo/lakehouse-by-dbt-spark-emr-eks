@@ -13,14 +13,31 @@ import dagster as dg
 # ---------------------------------------------------------------------------------------------------------------------
 # DEFAULT SPARK PROPERTIES (Iceberg + Glue Catalog)
 # These are always included in every Spark job unless explicitly overridden.
+#
+# Catalog strategy: wrap the built-in Spark session catalog (`spark_catalog`)
+# with Iceberg's SparkSessionCatalog, backed by AWS Glue. With this layout,
+# every unqualified `schema.table` reference in dbt (no `catalog.` prefix)
+# resolves through a single catalog that handles both Iceberg and legacy
+# Hive/Parquet tables. This matches how Athena registers tables in Glue,
+# so Spark can read sources created by Athena (and vice versa) without any
+# qualified-name changes in the dbt project.
+#
+# Alternative (requires prefixing every reference with `glue_catalog.`):
+#   spark.sql.catalog.glue_catalog = org.apache.iceberg.spark.SparkCatalog
+#   spark.sql.defaultCatalog       = glue_catalog
 # ---------------------------------------------------------------------------------------------------------------------
 
 DEFAULT_SPARK_PROPERTIES: Dict[str, str] = {
-    "spark.sql.catalog.glue_catalog": "org.apache.iceberg.spark.SparkCatalog",
-    "spark.sql.catalog.glue_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
-    "spark.sql.catalog.glue_catalog.warehouse": "s3://lakehouse-data-lake/warehouse/",
+    # Enable Iceberg SQL extensions (MERGE INTO, time travel, rewrite_data_files).
     "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-    "spark.sql.catalog.glue_catalog.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
+    # Wrap Spark's default session catalog with Iceberg's SparkSessionCatalog.
+    # Iceberg handles Iceberg tables; everything else falls back to the
+    # underlying Hive-compatible metastore (AWS Glue via the client factory below).
+    "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkSessionCatalog",
+    "spark.sql.catalog.spark_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
+    "spark.sql.catalog.spark_catalog.warehouse": "s3://lakehouse-at-scale-data-lake/warehouse/",
+    "spark.sql.catalog.spark_catalog.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
+    # AWS Glue as the Hive metastore backend for non-Iceberg fallback paths.
     "spark.hadoop.hive.metastore.client.factory.class": (
         "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
     ),

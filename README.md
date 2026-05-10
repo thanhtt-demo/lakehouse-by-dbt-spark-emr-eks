@@ -437,6 +437,36 @@ Does not build or push images — use the local script (or CI) first. Does not t
 
 The script uploads an inline smoke script to `s3://lakehouse-at-scale-pipes/smoke-tests/`, submits the EMR job, then polls until the job reaches a terminal state. `COMPLETED` = pass; on `FAILED` it prints `failureReason` + `stateDetails`.
 
+### Remote dbt build on EMR on EKS (`scripts/smoke-test-dbt-model.ps1`)
+
+Submits a Spark job that actually runs `dbt build --select <model>` using a Code Image already in ECR. The driver uses a debug runner uploaded to S3 (not the baked-in `/app/entrypoint.py`) and ships logs to CloudWatch + S3 — so Dagster Pipes is bypassed entirely and you see full dbt output (stdout, `run_results.json`, `dbt.log` tail).
+
+The runner also:
+
+- Writes a fresh `profiles.yml` to `/tmp` so you don't have to rebuild the Code Image to test profile changes.
+- Redirects dbt `target/` and `logs/` to `/tmp` (EMR driver pods have a read-only root filesystem).
+
+Use this when:
+
+- Validating a change to `entrypoint.py`, `profiles.yml`, Dockerfile, or a dbt model without round-tripping through Dagster.
+- Reproducing a production dbt error locally with the exact same image + IAM + Glue catalog as Dagster uses.
+
+```powershell
+# Default: dbt build stg_raw_orders against the latest tag in ECR
+.\scripts\smoke-test-dbt-model.ps1
+
+# Different model + pin image tag
+.\scripts\smoke-test-dbt-model.ps1 -Model orders -Tag abc12345
+
+# After VC or execution role recreation
+.\scripts\smoke-test-dbt-model.ps1 `
+    -Model stg_raw_orders `
+    -VirtualClusterId <vc> `
+    -ExecutionRoleArn <role>
+```
+
+When the job fails, the script prints the CloudWatch log group/prefix and an `aws s3 cp` one-liner to fetch the driver stdout (where the `[smoke] ...` lines and the full dbt error live) once EMR syncs logs.
+
 ## CI/CD (GitHub Actions)
 
 The CI/CD pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`) requires 4 GitHub repository secrets. Here's how to obtain each one:

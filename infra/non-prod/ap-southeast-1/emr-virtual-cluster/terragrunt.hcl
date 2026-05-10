@@ -84,6 +84,18 @@ dependency "s3_spark_logs" {
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
 }
 
+# The EMR execution role needs Glue Data Catalog access for Iceberg reads/writes.
+# The community submodule grants S3 + CloudWatch by default; Glue is attached here
+# via `iam_role_additional_policies`.
+dependency "iceberg_policy" {
+  config_path = "../emr-execution-iceberg-policy"
+
+  mock_outputs = {
+    arn = "arn:aws:iam::123456789012:policy/mock-emr-iceberg"
+  }
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
+}
+
 # Pass EKS and S3 outputs to the EMR Virtual Cluster module
 inputs = {
   eks_cluster_name = dependency.eks.outputs.cluster_name
@@ -99,4 +111,10 @@ inputs = {
   ]
 
   eks_oidc_provider_arn = dependency.eks.outputs.oidc_provider_arn
+
+  # Additional policies attached to the job execution role.
+  # Keys are arbitrary identifiers used by for_each in the module.
+  iam_role_additional_policies = {
+    iceberg = dependency.iceberg_policy.outputs.arn
+  }
 }
