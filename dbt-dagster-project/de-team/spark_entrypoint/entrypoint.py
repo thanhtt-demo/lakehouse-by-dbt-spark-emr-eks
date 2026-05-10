@@ -41,8 +41,19 @@ def main() -> None:
         )
 
         # 2. Run dbt via dbtRunner (Python API, same process as SparkSession)
-        #    dbt-spark session method auto-discovers the active SparkSession
+        #    dbt-spark session method auto-discovers the active SparkSession.
+        #    EMR on EKS Spark pods run with a read-only root filesystem, so
+        #    dbt cannot write target/ or logs/ next to the baked-in project.
+        #    Redirect both to /tmp (writable tmpfs) via --target-path and
+        #    --log-path (also set env vars as a safety net for child processes).
         from dbt.cli.main import dbtRunner
+
+        import tempfile
+        dbt_tmp = tempfile.mkdtemp(prefix="dbt-", dir="/tmp")
+        target_path = os.path.join(dbt_tmp, "target")
+        log_path = os.path.join(dbt_tmp, "logs")
+        os.environ["DBT_TARGET_PATH"] = target_path
+        os.environ["DBT_LOG_PATH"] = log_path
 
         dbt_runner = dbtRunner()
         dbt_args = [
@@ -50,12 +61,14 @@ def main() -> None:
             "--select", model_name,
             "--project-dir", "/app/dbt_project",
             "--profiles-dir", "/app/dbt_project",
+            "--target-path", target_path,
+            "--log-path", log_path,
         ]
 
         result = dbt_runner.invoke(dbt_args)
 
-        # 3. Parse run_results.json
-        run_results = _parse_run_results("/app/dbt_project/target/run_results.json")
+        # 3. Parse run_results.json (from the writable target dir)
+        run_results = _parse_run_results(os.path.join(target_path, "run_results.json"))
 
         # 4. Report test results as AssetCheckResult
         if run_results:
