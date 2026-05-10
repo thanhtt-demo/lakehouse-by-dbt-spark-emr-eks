@@ -85,7 +85,7 @@ dagster:
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-          tag: "6e210f56"
+          tag: "ccafc537"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
@@ -114,7 +114,7 @@ dagster:
           - name: EMR_EXECUTION_ROLE_ARN
             value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260510061545521500000001"
           - name: SPARK_CODE_IMAGE_URI
-            value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code:6e210f56"
+            value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code:ccafc537"
           - name: PIPES_S3_BUCKET
             value: "lakehouse-at-scale-pipes"
           - name: SPARK_S3_LOGS_URI
@@ -128,7 +128,7 @@ dagster:
         # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/sales-team-code"
-          tag: "81421f60"
+          tag: "ccafc537"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
