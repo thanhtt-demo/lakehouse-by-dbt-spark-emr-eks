@@ -35,6 +35,12 @@ dagster:
     replicaCount: 1
     nodeSelector:
       role: workload
+    # Keep the webserver pod pinned to its node — Karpenter's consolidation
+    # (WhenEmptyOrUnderutilized) would otherwise drain long-running "lightweight"
+    # controllers to pack them onto a smaller cheaper node, which causes the
+    # UI to bounce every few minutes.
+    annotations:
+      karpenter.sh/do-not-disrupt: "true"
     resources:
       requests:
         cpu: 500m
@@ -51,6 +57,10 @@ dagster:
     replicaCount: 1
     nodeSelector:
       role: workload
+    # Same reasoning as webserver — the scheduler/run-coordinator daemon
+    # must stay online; being reconsolidated mid-run causes missed ticks.
+    annotations:
+      karpenter.sh/do-not-disrupt: "true"
     resources:
       requests:
         cpu: 250m
@@ -93,6 +103,11 @@ dagster:
         port: 3030
         nodeSelector:
           role: workload
+        # The user-deployment gRPC server must stay online for the webserver
+        # + daemon to load code and launch runs; protect it from Karpenter
+        # consolidation (same pattern as webserver/daemon).
+        annotations:
+          karpenter.sh/do-not-disrupt: "true"
         resources:
           requests:
             cpu: 250m
@@ -144,6 +159,8 @@ dagster:
         port: 3030
         nodeSelector:
           role: workload
+        annotations:
+          karpenter.sh/do-not-disrupt: "true"
         resources:
           requests:
             cpu: 250m
