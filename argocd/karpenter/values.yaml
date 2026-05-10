@@ -17,13 +17,13 @@ karpenter:
   # Karpenter settings — populated from Terraform outputs
   settings:
     clusterName: "lakehouse-at-scale-eks"
-    clusterEndpoint: "https://7B706AEA51313E1223838A185B21FC1A.gr7.ap-southeast-1.eks.amazonaws.com"
+    clusterEndpoint: "https://9300A028F0FD9150EAAB48E6EF28A559.gr7.ap-southeast-1.eks.amazonaws.com"
     interruptionQueue: "Karpenter-lakehouse-at-scale-eks"
 
   # Service account — IAM role created by Terraform (task 2.3)
   serviceAccount:
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/KarpenterController-20260508234614633000000006"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/KarpenterController-20260510061547888500000006"
 
   # Controller resources
   controller:
