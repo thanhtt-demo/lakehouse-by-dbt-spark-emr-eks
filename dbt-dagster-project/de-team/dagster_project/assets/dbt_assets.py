@@ -103,6 +103,9 @@ def de_team_dbt_assets(
     # CI/CD updates this in lock-step with the Dagster user-deployment `image.tag` so the
     # Spark driver/executor pods always pull the same image version as the Dagster run pod.
     code_image_uri = os.getenv("SPARK_CODE_IMAGE_URI", "")
+    # Log sinks for Spark driver/executor — critical for debugging failed dbt runs.
+    s3_logs_uri = os.getenv("SPARK_S3_LOGS_URI", "")
+    cloudwatch_log_group = os.getenv("SPARK_CLOUDWATCH_LOG_GROUP", "")
 
     for asset_key in context.selected_asset_keys:
         model_name = asset_key.path[-1]
@@ -119,6 +122,8 @@ def de_team_dbt_assets(
             execution_role_arn=execution_role_arn,
             image_uri=code_image_uri,
             run_id=context.run_id,
+            s3_logs_uri=s3_logs_uri,
+            cloudwatch_log_group=cloudwatch_log_group,
         )
 
         # Submit Spark job — entrypoint.py runs `dbt build --select model_name`

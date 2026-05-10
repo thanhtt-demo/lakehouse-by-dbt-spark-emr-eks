@@ -143,12 +143,20 @@ class SparkConfigManager(dg.ConfigurableResource):
         image_uri: str,
         release_label: str = "emr-7.5.0-latest",
         run_id: str = "",
+        s3_logs_uri: str = "",
+        cloudwatch_log_group: str = "",
     ) -> dict:
         """Build start_job_run_params dict for PipesEMRContainersClient.run().
 
+        Args:
+            s3_logs_uri: s3://bucket[/prefix] — ship driver/executor logs to S3.
+            cloudwatch_log_group: CloudWatch log group name — stream driver/executor logs.
+
         Returns:
             Dict containing releaseLabel, virtualClusterId, executionRoleArn,
-            jobDriver.sparkSubmitJobDriver with entryPoint and sparkSubmitParameters.
+            jobDriver.sparkSubmitJobDriver with entryPoint and sparkSubmitParameters,
+            and optional configurationOverrides.monitoringConfiguration when log sinks
+            are provided.
         """
         res = config.resources
 
@@ -179,6 +187,19 @@ class SparkConfigManager(dg.ConfigurableResource):
                 },
             },
         }
+
+        # Monitoring configuration — ship Spark driver/executor logs to S3 + CloudWatch.
+        # Without this, failed jobs leave no trace once EMR cleans up driver/executor pods.
+        monitoring: dict = {}
+        if s3_logs_uri:
+            monitoring["s3MonitoringConfiguration"] = {"logUri": s3_logs_uri}
+        if cloudwatch_log_group:
+            monitoring["cloudWatchMonitoringConfiguration"] = {
+                "logGroupName": cloudwatch_log_group,
+                "logStreamNamePrefix": run_id or "dbt-spark",
+            }
+        if monitoring:
+            params["configurationOverrides"] = {"monitoringConfiguration": monitoring}
 
         if run_id:
             params["clientToken"] = run_id
