@@ -19,10 +19,12 @@ LABEL org.opencontainers.image.source="dbt-dagster-project/de-team"
 # COPY PROJECT CODE
 # Order: dbt_project → spark_entrypoint → dagster_project
 # entryPoint for EMR spark-submit: local:///app/entrypoint.py
+# --chown=hadoop:hadoop so the runtime user (EMR on EKS default) can write to
+# dbt working dirs (logs/, target/) at runtime.
 # ---------------------------------------------------------------------------------------------------------------------
-COPY dbt_project/ /app/dbt_project/
-COPY spark_entrypoint/entrypoint.py /app/entrypoint.py
-COPY dagster_project/ /app/dagster_project/
+COPY --chown=hadoop:hadoop dbt_project/ /app/dbt_project/
+COPY --chown=hadoop:hadoop spark_entrypoint/entrypoint.py /app/entrypoint.py
+COPY --chown=hadoop:hadoop dagster_project/ /app/dagster_project/
 
 # Use hadoop user (matching base image — EMR on EKS default)
 USER hadoop

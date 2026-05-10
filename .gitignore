@@ -36,3 +36,9 @@ __pycache__/
 dist/
 build/
 .eggs/
+
+# dbt
+**/dbt_project/logs/
+**/dbt_project/target/
+**/dbt_project/dbt_packages/
+**/dbt_project/.user.yml

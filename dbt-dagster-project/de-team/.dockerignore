@@ -1,0 +1,8 @@
+# Keep image lean and avoid baking in host-user-owned artifacts
+# that would cause permission errors at runtime.
+dbt_project/logs/
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/.user.yml
+**/__pycache__/
+*.py[cod]
