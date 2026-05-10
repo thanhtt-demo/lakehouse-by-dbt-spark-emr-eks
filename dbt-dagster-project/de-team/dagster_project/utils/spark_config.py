@@ -141,7 +141,7 @@ class SparkConfigManager(dg.ConfigurableResource):
         virtual_cluster_id: str,
         execution_role_arn: str,
         image_uri: str,
-        release_label: str = "emr-7.5.0-latest",
+        release_label: str = "emr-7.13.0-latest",
         run_id: str = "",
         s3_logs_uri: str = "",
         cloudwatch_log_group: str = "",
@@ -160,8 +160,14 @@ class SparkConfigManager(dg.ConfigurableResource):
         """
         res = config.resources
 
-        # Build --conf flags for sparkSubmitParameters
+        # Build --conf flags for sparkSubmitParameters.
+        # The Iceberg Spark runtime JAR is bundled with the EMR on EKS base image at a
+        # well-known path; we must add it to --jars so IcebergSparkSessionExtensions is
+        # on the driver/executor classpath before Spark applies spark.sql.extensions.
+        # https://docs.aws.amazon.com/emr/latest/EMR-on-EKS-DevelopmentGuide/tutorial-iceberg.html
+        iceberg_jar = "local:///usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"
         conf_pairs: List[str] = [
+            f"--jars {iceberg_jar}",
             f"--conf spark.kubernetes.container.image={image_uri}",
             f"--conf spark.driver.cores={res.driver_cpu}",
             f"--conf spark.driver.memory={res.driver_memory}",
