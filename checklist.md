@@ -52,7 +52,7 @@ aws eks describe-cluster \
   --profile non-prod --region ap-southeast-1
 
 # Update kubeconfig 
- aws eks update-kubeconfig --name lakehouse-at-scale-eks --profile non-prod --region ap-southeast-1
+aws eks update-kubeconfig --name lakehouse-at-scale-eks --profile non-prod --region ap-southeast-1
 
 
 # Nodes
@@ -647,3 +647,48 @@ Add secrets at: GitHub repo → Settings → Secrets and variables → Actions �
 - [ ] Workflow YAML syntax validated
 - [ ] GitHub secrets configured
 - [ ] End-to-end test (push code → image built → ArgoCD updated)
+
+---
+
+## Port Forward Commands
+
+Access ArgoCD and Dagster UIs via kubectl port-forward:
+
+```bash
+aws eks update-kubeconfig --name lakehouse-at-scale-eks --profile non-prod --region ap-southeast-1
+
+# ArgoCD UI — http://localhost:8080
+kubectl port-forward svc/argocd-server 8080:443 -n argocd
+
+# ArgoCD admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# for windows
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
+
+
+# Dagster Webserver UI — http://localhost:3000
+kubectl port-forward svc/dagster-dagster-webserver 3000:80 -n dagster
+```
+
+```sql
+CREATE TABLE raw.raw_sales (
+	sale_id STRING,
+	product_id STRING,
+	customer_id STRING,
+	sale_date DATE,
+	quantity INT,
+	unit_price DOUBLE,
+	total_amount DOUBLE,
+	region STRING,
+	updated_at TIMESTAMP
+)
+LOCATION 's3://lakehouse-at-scale-data-lake/warehouse/raw/raw_sales/'
+TBLPROPERTIES ('table_type' = 'ICEBERG')
+
+-- Insert sample data
+INSERT INTO raw.raw_sales VALUES
+('S001', 'P001', 'C001', DATE '2026-01-15', 10, 29.99, 299.90, 'APAC', TIMESTAMP '2026-01-15 10:00:00'),
+('S002', 'P002', 'C002', DATE '2026-01-16', 5, 49.99, 249.95, 'EMEA', TIMESTAMP '2026-01-16 11:00:00'),
+('S003', 'P001', 'C003', DATE '2026-01-17', 3, 29.99, 89.97, 'NA', TIMESTAMP '2026-01-17 09:00:00')
+```

@@ -448,18 +448,20 @@ kubectl delete namespace spark --ignore-not-found
 kubectl delete nodeclaim --all --ignore-not-found
 kubectl delete nodepool --all --ignore-not-found
 
-# 2. Destroy all Terraform/Terragrunt resources (auto-resolves dependency order)
+# 2. Terminate Karpenter EC2 instances (orphan ENIs block EKS destroy)
+aws ec2 describe-instances --filters "Name=tag:karpenter.sh/discovery,Values=lakehouse-at-scale-eks" "Name=instance-state-name,Values=running,stopped" --query "Reservations[].Instances[].InstanceId" --output text --profile non-prod --region ap-southeast-1
+# Then: aws ec2 terminate-instances --instance-ids <IDs> --profile non-prod --region ap-southeast-1
+
+# 3. Empty S3 buckets (versioning enabled, so need --force to delete all versions)
+aws s3 rb s3://lakehouse-at-scale-data-lake --force --profile non-prod
+aws s3 rb s3://lakehouse-at-scale-pipes --force --profile non-prod
+aws s3 rb s3://lakehouse-at-scale-spark-logs --force --profile non-prod
+
+# 4. Destroy all Terraform/Terragrunt resources (auto-resolves dependency order)
 cd infra/non-prod/ap-southeast-1
 terragrunt run --all destroy
 
-# 3. Terminate orphaned Karpenter EC2 instances (not managed by Terraform)
-aws ec2 describe-instances \
-  --filters "Name=tag:karpenter.sh/discovery,Values=lakehouse-at-scale-eks" "Name=instance-state-name,Values=running" \
-  --query "Reservations[].Instances[].InstanceId" \
-  --output text --profile non-prod --region ap-southeast-1
-# Then: aws ec2 terminate-instances --instance-ids <IDs> --profile non-prod --region ap-southeast-1
-
-# 4. (Optional) Delete ECR images to avoid storage costs
+# 5. (Optional) Delete ECR images to avoid storage costs
 aws ecr batch-delete-image --repository-name lakehouse-at-scale/de-team-base --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
 aws ecr batch-delete-image --repository-name lakehouse-at-scale/de-team-code --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
 aws ecr batch-delete-image --repository-name lakehouse-at-scale/sales-team-base --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
