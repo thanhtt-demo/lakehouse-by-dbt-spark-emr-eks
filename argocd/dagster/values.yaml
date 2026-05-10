@@ -16,7 +16,6 @@ dagster:
     name: dagster
     annotations:
       eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260510061626768400000001"
-
   # ---------------------------------------------------------------------------
   # COMPUTE LOG MANAGER — persist stdout/stderr to S3 for viewing in Dagster UI
   # ---------------------------------------------------------------------------
@@ -27,7 +26,6 @@ dagster:
         bucket: "lakehouse-at-scale-data-lake"
         prefix: "dagster-compute-logs/"
         region: "ap-southeast-1"
-
   # ---------------------------------------------------------------------------
 
   # DAGSTER WEBSERVER
@@ -87,7 +85,7 @@ dagster:
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-          tag: "64ac082f"
+          tag: "81421f60"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
@@ -124,7 +122,7 @@ dagster:
         # SALES-TEAM — dbt-athena, queries Athena directly (no Spark/EMR)
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/sales-team-code"
-          tag: "79c6caaf"
+          tag: "81421f60"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
