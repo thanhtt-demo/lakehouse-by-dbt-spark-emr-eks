@@ -15,7 +15,7 @@ dagster:
     create: true
     name: dagster
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260508234655934700000001"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260510061626768400000001"
 
   # ---------------------------------------------------------------------------
   # COMPUTE LOG MANAGER — persist stdout/stderr to S3 for viewing in Dagster UI
@@ -77,7 +77,7 @@ dagster:
       create: true
       name: dagster-user-deployments
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260508234655934700000001"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260510061626768400000001"
     deployments:
       # -------------------------------------------------------------------------
 
