@@ -189,11 +189,19 @@ jobs:
         working-directory: argocd-repo
         run: |
           IMAGE_TAG="${{ needs.build-de-team.outputs.image-tag }}"
+          IMAGE_REPO="${{ env.ECR_REGISTRY }}/lakehouse-at-scale/de-team-code"
           # Update de-team image tag in Dagster Helm values
           # Uses yq to surgically update only the de-team deployment tag
           yq -i '
             .dagster.dagster-user-deployments.deployments[] |=
               select(.name == "de-team").image.tag = "'"${IMAGE_TAG}"'"
+          ' argocd/dagster/values.yaml
+          # Keep SPARK_CODE_IMAGE_URI env in lock-step — Spark driver/executor pods
+          # reference this full URI (repo:tag) to pull the matching code image.
+          yq -i '
+            (.dagster.dagster-user-deployments.deployments[]
+              | select(.name == "de-team").env[]
+              | select(.name == "SPARK_CODE_IMAGE_URI").value) = "'"${IMAGE_REPO}:${IMAGE_TAG}"'"
           ' argocd/dagster/values.yaml
 
       - name: Update sales-team image tag

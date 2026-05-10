@@ -69,8 +69,13 @@ inputs = {
           "emr-containers:DescribeJobRun",
           "emr-containers:CancelJobRun",
           "emr-containers:ListJobRuns",
+          "emr-containers:TagResource",
+          "emr-containers:DescribeJobRun"
         ]
-        Resource = dependency.emr.outputs.virtual_cluster_arn
+        Resource = [
+          dependency.emr.outputs.virtual_cluster_arn,
+          "${dependency.emr.outputs.virtual_cluster_arn}/*"
+        ]
       },
       {
         Sid    = "PipesBucketReadWrite"

@@ -99,15 +99,10 @@ def de_team_dbt_assets(
     # Read runtime config from environment
     virtual_cluster_id = os.getenv("EMR_VIRTUAL_CLUSTER_ID", "")
     execution_role_arn = os.getenv("EMR_EXECUTION_ROLE_ARN", "")
-    # SPARK_CODE_IMAGE_URI is the repo without tag; DAGSTER_CURRENT_IMAGE has the full image:tag
-    # that Dagster Helm chart injects. Use it to derive the Spark image URI with same tag.
-    spark_image_base = os.getenv("SPARK_CODE_IMAGE_URI", "")
-    dagster_current_image = os.getenv("DAGSTER_CURRENT_IMAGE", "")
-    if dagster_current_image and ":" in dagster_current_image:
-        image_tag = dagster_current_image.rsplit(":", 1)[1]
-    else:
-        image_tag = "latest"
-    code_image_uri = f"{spark_image_base}:{image_tag}" if spark_image_base else ""
+    # SPARK_CODE_IMAGE_URI carries the full ECR URI including tag (e.g. `...repo:<sha>`).
+    # CI/CD updates this in lock-step with the Dagster user-deployment `image.tag` so the
+    # Spark driver/executor pods always pull the same image version as the Dagster run pod.
+    code_image_uri = os.getenv("SPARK_CODE_IMAGE_URI", "")
 
     for asset_key in context.selected_asset_keys:
         model_name = asset_key.path[-1]
