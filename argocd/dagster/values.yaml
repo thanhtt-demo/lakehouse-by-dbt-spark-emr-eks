@@ -127,8 +127,8 @@ dagster:
           # Leave disabled in prod: the extra payload travels through Pipes S3
           # messages. Compiled + executed SQL is ALWAYS reported regardless of
           # this flag; it only controls the verbose dbt.log stream.
-          # - name: DBT_DEBUG
-          #   value: "1"
+          - name: DBT_DEBUG
+            value: "1"
       # -------------------------------------------------------------------------
       - name: sales-team
         # -------------------------------------------------------------------------
