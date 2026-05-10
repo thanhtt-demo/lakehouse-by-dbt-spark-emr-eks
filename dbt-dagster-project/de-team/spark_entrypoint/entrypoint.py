@@ -14,11 +14,21 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Optional
+import sys
+import time
+from typing import Any, Dict, Optional
 
 import boto3
 from dagster_pipes import PipesS3MessageWriter, open_dagster_pipes
 from pyspark.sql import SparkSession
+
+
+# Extra grace window (seconds) after `pipes.report_asset_materialization` so the
+# stdio forwarder thread can push its final chunk before `open_dagster_pipes`
+# exits and marks the writer closed. Without this, Dagster logs a benign but
+# noisy "unexpected message received after closed" warning for the last dbt
+# "Done. PASS=..." lines. Tune via PIPES_STDIO_FLUSH_SECS; 0 disables the wait.
+_PIPES_STDIO_FLUSH_SECS = int(os.getenv("PIPES_STDIO_FLUSH_SECS", "3"))
 
 
 def main() -> None:
@@ -77,7 +87,7 @@ def main() -> None:
 
             # 4. Report test results as AssetCheckResult
             if run_results:
-                _report_test_results(pipes, run_results)
+                _report_test_results(pipes, run_results, target_path)
 
             # 5. Fail fast if dbt failed — surface the actual dbt error so it shows
             #    up in Dagster logs (not just the generic "dbt build failed").
@@ -140,6 +150,15 @@ def main() -> None:
                 pipes.log.info(f"Executed SQL for {model_name}:\n{run_sql}")
 
             pipes.report_asset_materialization(metadata=metadata)
+            # Flush stdio and sleep briefly so the PipesS3MessageWriter stdio
+            # forwarder thread has time to upload its last chunk BEFORE the
+            # context manager closes the writer. Otherwise dbt's final
+            # "Done. PASS=..." lines arrive after close and trigger a warning
+            # in the Dagster log, even though the run itself is successful.
+            sys.stdout.flush()
+            sys.stderr.flush()
+            if _PIPES_STDIO_FLUSH_SECS > 0:
+                time.sleep(_PIPES_STDIO_FLUSH_SECS)
             # pipes context manager flushes + closes the S3 message writer on exit.
     finally:
         # 7. Cleanup — stop Spark AFTER pipes is fully closed to avoid the
@@ -154,7 +173,7 @@ def main() -> None:
 # HELPER FUNCTIONS
 # ---------------------------------------------------------------------------------------------------------------------
 
-def _report_test_results(pipes, run_results: dict) -> None:
+def _report_test_results(pipes, run_results: dict, target_path: str) -> None:
     """Report dbt test results as AssetCheckResult via Pipes.
 
     dbt test unique_id format: `test.{package}.{test_name}.{hash}` for generic
@@ -162,6 +181,11 @@ def _report_test_results(pipes, run_results: dict) -> None:
     check name must match the one registered by `@dbt_assets` (which uses the
     bare test_name, e.g. `not_null_stg_raw_orders_customer_id`) — NOT the
     trailing hash. Parse `parts[2]` so we always pick the name segment.
+
+    Also surfaces the executed test SQL in check metadata so it shows up in
+    the Dagster UI alongside pass/fail status. dbt emits one of two forms:
+      - result["compiled_code"] — the final SQL string (newer dbt)
+      - target/compiled/<pkg>/models/.../schema.yml/<test_name>.sql — a file
     """
     for result in run_results.get("results", []):
         unique_id = result.get("unique_id", "")
@@ -176,14 +200,27 @@ def _report_test_results(pipes, run_results: dict) -> None:
         passed = result.get("status") == "pass"
         message = result.get("message", "") or ""
 
+        # Prefer inline compiled_code from run_results; fall back to reading
+        # the on-disk file that dbt writes during `build`.
+        test_sql = result.get("compiled_code") or _read_model_sql(
+            target_path, test_name, "compiled"
+        )
+
+        check_metadata: Dict[str, Any] = {
+            "test_unique_id": unique_id,
+            "test_message": message,
+            "severity": result.get("severity", "ERROR"),
+        }
+        if test_sql:
+            check_metadata["test_sql"] = test_sql
+            # Also emit into the run log so users can grep tests without
+            # expanding the Checks tab in the UI.
+            pipes.log.info(f"Test SQL for {test_name}:\n{test_sql}")
+
         pipes.report_asset_check(
             check_name=test_name,
             passed=passed,
-            metadata={
-                "test_unique_id": unique_id,
-                "test_message": message,
-                "severity": result.get("severity", "ERROR"),
-            },
+            metadata=check_metadata,
         )
 
 
