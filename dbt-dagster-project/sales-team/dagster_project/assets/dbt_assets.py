@@ -5,10 +5,12 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any, Optional
 
 from dagster import AssetExecutionContext
-from dagster_dbt import DbtCliResource, DbtProject, dbt_assets
+from dagster_dbt import DagsterDbtTranslator, DbtCliResource, DbtProject, dbt_assets
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -30,6 +32,26 @@ if os.getenv("DAGSTER_ENV") != "prod":
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+# CUSTOM DBT TRANSLATOR
+# Maps dbt model folder (staging/marts) to Dagster group name for UI organization.
+# ---------------------------------------------------------------------------------------------------------------------
+
+class SalesTeamDbtTranslator(DagsterDbtTranslator):
+    """Custom translator that maps dbt model folder to Dagster group name."""
+
+    def get_group_name(self, dbt_resource_props: Mapping[str, Any]) -> Optional[str]:
+        """Derive Dagster group from the dbt model's folder path.
+
+        dbt manifest `fqn` looks like: ["sales_team_lakehouse", "staging", "stg_orders"]
+        The second element is the subfolder under models/.
+        """
+        fqn = dbt_resource_props.get("fqn", [])
+        if len(fqn) >= 2:
+            return fqn[1]  # e.g. "staging", "marts"
+        return "default"
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 # DBT ASSETS DEFINITION
 # Each dbt model becomes a Dagster asset. On materialize, dbt CLI runs directly on the pod
 # using DbtCliResource. dbt-athena submits queries to Amazon Athena.
@@ -38,6 +60,7 @@ if os.getenv("DAGSTER_ENV") != "prod":
 
 @dbt_assets(
     manifest=dbt_project.manifest_path,
+    dagster_dbt_translator=SalesTeamDbtTranslator(),
 )
 def sales_team_dbt_assets(
     context: AssetExecutionContext,
