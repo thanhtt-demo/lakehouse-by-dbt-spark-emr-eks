@@ -63,7 +63,21 @@ def _find_model_in_manifest(model_name: str) -> Optional[dict]:
 # ---------------------------------------------------------------------------------------------------------------------
 
 class SparkDbtTranslator(DagsterDbtTranslator):
-    """Custom translator that exposes spark_config from dbt model meta as Dagster metadata."""
+    """Custom translator that:
+    - Maps dbt model folder (staging/intermediate/marts) to Dagster group name
+    - Exposes spark_config from dbt model meta as Dagster metadata
+    """
+
+    def get_group_name(self, dbt_resource_props: Mapping[str, Any]) -> Optional[str]:
+        """Derive Dagster group from the dbt model's folder path.
+
+        dbt manifest `fqn` looks like: ["de_team_lakehouse", "staging", "stg_raw_orders"]
+        The second element is the subfolder under models/.
+        """
+        fqn = dbt_resource_props.get("fqn", [])
+        if len(fqn) >= 2:
+            return fqn[1]  # e.g. "staging", "intermediate", "marts"
+        return "default"
 
     def get_metadata(self, dbt_resource_props: Mapping[str, Any]) -> Mapping[str, Any]:
         meta = dbt_resource_props.get("meta", {})
