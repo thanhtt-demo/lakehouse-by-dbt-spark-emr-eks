@@ -40,11 +40,16 @@ class SalesTeamDbtTranslator(DagsterDbtTranslator):
     """Custom translator that maps dbt model folder to Dagster group name."""
 
     def get_group_name(self, dbt_resource_props: Mapping[str, Any]) -> Optional[str]:
-        """Derive Dagster group from the dbt model's folder path.
+        """Derive Dagster group from dbt resource properties.
 
-        dbt manifest `fqn` looks like: ["sales_team_lakehouse", "staging", "stg_orders"]
-        The second element is the subfolder under models/.
+        Priority:
+        1. meta.dagster_group (per-resource, set in schema.yml) — flexible per table/model
+        2. fqn[1] for models (folder-based: staging/marts)
+        3. "default" fallback
         """
+        meta = dbt_resource_props.get("meta", {})
+        if meta.get("dagster_group"):
+            return meta["dagster_group"]
         fqn = dbt_resource_props.get("fqn", [])
         if len(fqn) >= 2:
             return fqn[1]  # e.g. "staging", "marts"

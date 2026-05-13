@@ -13,7 +13,7 @@ import dagster as dg
         "Validates the staged sales data after materialization. "
         "Runs directly on the Dagster user code pod — no Athena query needed."
     ),
-    group_name="sales_team",
+    group_name="raw",
 )
 def sales_data_validation(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
     """Sample Python-only asset that validates staged sales data.

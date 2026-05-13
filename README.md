@@ -23,76 +23,76 @@ This is the **Infrastructure repo** — contains Terraform modules, Terragrunt c
 ```
 .github/
 └── workflows/
-    └── ci-cd.yml                    # ✅ GitHub Actions CI/CD pipeline
+    └── ci-cd.yml                    #  GitHub Actions CI/CD pipeline
 
 infra/
 ├── root.hcl                        # Root config: S3 remote state, native locking, AWS provider
 ├── _envcommon/                     # Shared Terragrunt configs
-│   ├── vpc.hcl                     # ✅ VPC shared config
-│   ├── eks.hcl                     # ✅ EKS (community module)
-│   ├── karpenter.hcl               # ✅ Karpenter (community submodule)
-│   ├── emr-virtual-cluster.hcl     # ✅ EMR Virtual Cluster (community submodule)
-│   ├── ecr.hcl                     # ✅ ECR (local wrapper)
-│   ├── s3.hcl                      # ✅ S3 shared config (community module)
-│   ├── dagster-irsa-policy.hcl     # ✅ Dagster IAM policy (community module)
-│   ├── dagster-irsa-role.hcl       # ✅ Dagster IRSA role (community module)
-│   ├── github-oidc-provider.hcl    # ✅ GitHub OIDC provider (community module)
-│   ├── github-oidc-role.hcl        # ✅ GitHub OIDC role (community module)
-│   └── glue.hcl                    # ✅ Glue (local module)
+│   ├── vpc.hcl                     #  VPC shared config
+│   ├── eks.hcl                     #  EKS (community module)
+│   ├── karpenter.hcl               #  Karpenter (community submodule)
+│   ├── emr-virtual-cluster.hcl     #  EMR Virtual Cluster (community submodule)
+│   ├── ecr.hcl                     #  ECR (local wrapper)
+│   ├── s3.hcl                      #  S3 shared config (community module)
+│   ├── dagster-irsa-policy.hcl     #  Dagster IAM policy (community module)
+│   ├── dagster-irsa-role.hcl       #  Dagster IRSA role (community module)
+│   ├── github-oidc-provider.hcl    #  GitHub OIDC provider (community module)
+│   ├── github-oidc-role.hcl        #  GitHub OIDC role (community module)
+│   └── glue.hcl                    #  Glue (local module)
 ├── modules/                        # Terraform modules (local only)
-│   ├── vpc/                        # ✅ VPC module
-│   ├── ecr/                        # ✅ ECR wrapper (4 repos via community module)
-│   ├── glue/                       # ✅ Glue module (Data Catalog databases)
-│   └── docker-image/               # ✅ Build & push Base Images to ECR
+│   ├── vpc/                        #  VPC module
+│   ├── ecr/                        #  ECR wrapper (4 repos via community module)
+│   ├── glue/                       #  Glue module (Data Catalog databases)
+│   └── docker-image/               #  Build & push Base Images to ECR
 └── non-prod/                       # Live environment
     └── ap-southeast-1/
         ├── env.hcl
-        ├── vpc/                    # ✅ VPC
-        ├── eks/                    # ✅ EKS
-        ├── karpenter/              # ✅ Karpenter AWS resources
-        ├── emr-virtual-cluster/    # ✅ EMR Virtual Cluster
-        ├── ecr/                    # ✅ ECR repositories
-        ├── s3/                     # ✅ S3 buckets (grouped)
+        ├── vpc/                    #  VPC
+        ├── eks/                    #  EKS
+        ├── karpenter/              #  Karpenter AWS resources
+        ├── emr-virtual-cluster/    #  EMR Virtual Cluster
+        ├── ecr/                    #  ECR repositories
+        ├── s3/                     #  S3 buckets (grouped)
         │   ├── data-lake/
         │   ├── pipes/
         │   └── spark-logs/
-        ├── dagster-irsa/           # ✅ Dagster IAM (grouped)
+        ├── dagster-irsa/           #  Dagster IAM (grouped)
         │   ├── de-team-policy/
         │   ├── de-team-role/
         │   ├── sales-team-policy/
         │   └── sales-team-role/
-        ├── github-oidc/            # ✅ GitHub Actions OIDC (grouped)
+        ├── github-oidc/            #  GitHub Actions OIDC (grouped)
         │   ├── provider/
         │   └── role/
-        └── glue/                   # ✅ Glue Data Catalog databases
+        └── glue/                   #  Glue Data Catalog databases
 
-argocd/                              # ✅ ArgoCD App-of-Apps (Helm charts + K8s manifests)
-├── app-of-apps.yaml                 # ✅ Bootstrap Application CRD (kubectl apply once)
-├── apps/                            # ✅ Root App-of-Apps Helm chart
+argocd/                              #  ArgoCD App-of-Apps (Helm charts + K8s manifests)
+├── app-of-apps.yaml                 #  Bootstrap Application CRD (kubectl apply once)
+├── apps/                            #  Root App-of-Apps Helm chart
 │   ├── Chart.yaml
 │   ├── values.yaml                  #   Single source of truth for all applications
 │   └── templates/
 │       ├── applications.yaml        #   Loop over values → ArgoCD Application CRDs
 │       └── project.yaml             #   ArgoCD AppProject
-├── karpenter/                       # ✅ Karpenter umbrella Helm chart (sync-wave: 2)
+├── karpenter/                       #  Karpenter umbrella Helm chart (sync-wave: 2)
 │   ├── Chart.yaml                   #   Dependency: official Karpenter chart v1.1.1
 │   ├── values.yaml
 │   └── templates/
 │       ├── ec2nodeclass.yaml        #   EC2NodeClass (AL2023, tag-based discovery)
 │       ├── nodepool-spark-drivers.yaml    # On-Demand (m5.large, m6i.large)
 │       └── nodepool-spark-executors.yaml  # Spot (m5.xlarge/2xlarge, m6i.xlarge/2xlarge)
-├── dagster/                         # ✅ Dagster umbrella Helm chart (sync-wave: 3)
+├── dagster/                         #  Dagster umbrella Helm chart (sync-wave: 3)
 │   ├── Chart.yaml                   #   Dependency: official Dagster chart v1.9.6
 │   └── values.yaml                  #   2 code locations: de-team, sales-team
-└── namespaces/                      # ✅ Namespace manifests (sync-wave: 1)
+└── namespaces/                      #  Namespace manifests (sync-wave: 1)
     ├── dagster-ns.yaml
     └── spark-ns.yaml
 
-dbt-dagster-project/                     # ✅ dbt Projects + Dagster Application Code
+dbt-dagster-project/                     #  dbt Projects + Dagster Application Code
 ├── de-team/
 │   ├── Dockerfile.base
 │   ├── Dockerfile.code
-│   ├── dagster_project/                 # ✅ Dagster code location (de-team)
+│   ├── dagster_project/                 #  Dagster code location (de-team)
 │   │   ├── __init__.py
 │   │   ├── definitions.py              #   Dagster Definitions entry point
 │   │   ├── assets/
@@ -105,8 +105,8 @@ dbt-dagster-project/                     # ✅ dbt Projects + Dagster Applicatio
 │   │       ├── __init__.py
 │   │       └── spark_config.py         #   SparkConfigManager (merge + params builder)
 │   ├── spark_entrypoint/
-│   │   └── entrypoint.py               # ✅ Spark entrypoint (dbt build via Pipes)
-│   └── dbt_project/                     # ✅ dbt-spark + Iceberg
+│   │   └── entrypoint.py               #  Spark entrypoint (dbt build via Pipes)
+│   └── dbt_project/                     #  dbt-spark + Iceberg
 │       ├── dbt_project.yml
 │       ├── profiles.yml
 │       ├── macros/
@@ -122,7 +122,7 @@ dbt-dagster-project/                     # ✅ dbt Projects + Dagster Applicatio
 └── sales-team/
     ├── Dockerfile.base
     ├── Dockerfile.code
-    ├── dagster_project/                 # ✅ Dagster code location (sales-team)
+    ├── dagster_project/                 #  Dagster code location (sales-team)
     │   ├── __init__.py
     │   ├── definitions.py              #   Dagster Definitions entry point
     │   ├── assets/
@@ -131,7 +131,7 @@ dbt-dagster-project/                     # ✅ dbt Projects + Dagster Applicatio
     │   │   └── python_assets.py        #   Python-only assets (no Athena)
     │   └── resources/
     │       └── __init__.py             #   DbtCliResource factory
-    └── dbt_project/                     # ✅ dbt-athena + Iceberg
+    └── dbt_project/                     #  dbt-athena + Iceberg
         ├── dbt_project.yml
         ├── profiles.yml
         ├── macros/
@@ -145,7 +145,7 @@ dbt-dagster-project/                     # ✅ dbt Projects + Dagster Applicatio
 
 ## Modules
 
-### ✅ VPC (`infra/modules/vpc/`)
+###  VPC (`infra/modules/vpc/`)
 
 VPC with public/private subnets (multi-AZ), NAT Gateway, Internet Gateway, and route tables. Subnets are tagged for Kubernetes ELB discovery.
 
@@ -155,7 +155,7 @@ VPC with public/private subnets (multi-AZ), NAT Gateway, Internet Gateway, and r
 | `private_subnet_ids` | Private subnet IDs (multi-AZ) |
 | `public_subnet_ids` | Public subnet IDs (multi-AZ) |
 
-### ✅ EKS (community module)
+###  EKS (community module)
 
 Uses [`terraform-aws-modules/eks/aws`](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest) v21.19.0 directly from Terragrunt (no local wrapper). EKS cluster with managed node group for system workloads, OIDC provider for IRSA, cluster addons (vpc-cni, coredns, kube-proxy, eks-pod-identity-agent), and node security group tagged for Karpenter discovery.
 
@@ -167,7 +167,7 @@ Uses [`terraform-aws-modules/eks/aws`](https://registry.terraform.io/modules/ter
 | `oidc_provider_arn` | ARN of the OIDC provider for IRSA |
 | `node_security_group_id` | Node shared security group ID |
 
-### ✅ Karpenter (community submodule — AWS resources only)
+###  Karpenter (community submodule — AWS resources only)
 
 Uses [`terraform-aws-modules/eks/aws//modules/karpenter`](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest/submodules/karpenter) v21.19.0 directly from Terragrunt. Creates AWS-side resources only: IAM roles (controller + node), SQS queue, EventBridge rules, access entry. Karpenter Helm chart, NodePool CRDs, and EC2NodeClass are managed by ArgoCD.
 
@@ -177,7 +177,7 @@ Uses [`terraform-aws-modules/eks/aws//modules/karpenter`](https://registry.terra
 | `node_iam_role_arn` | Karpenter node IAM role ARN |
 | `queue_name` | SQS queue name for interruption handling |
 
-### ✅ EMR Virtual Cluster (community submodule)
+###  EMR Virtual Cluster (community submodule)
 
 Uses [`terraform-aws-modules/emr/aws//modules/virtual-cluster`](https://registry.terraform.io/modules/terraform-aws-modules/emr/aws/latest/submodules/virtual-cluster) v3.3.0 directly from Terragrunt (no local wrapper). Creates EMR on EKS Virtual Cluster, Kubernetes RBAC (Role, RoleBinding), IAM execution role, and CloudWatch log group. Namespace `spark` is managed by ArgoCD (`create_namespace = false`).
 
@@ -187,7 +187,7 @@ Uses [`terraform-aws-modules/emr/aws//modules/virtual-cluster`](https://registry
 | `virtual_cluster_arn` | EMR Virtual Cluster ARN |
 | `iam_role_arn` | EMR execution role ARN |
 
-### ✅ ECR (`infra/modules/ecr/`)
+###  ECR (`infra/modules/ecr/`)
 
 Local wrapper module that calls [`terraform-aws-modules/ecr/aws`](https://registry.terraform.io/modules/terraform-aws-modules/ecr/aws/latest) v3.2.0 via `for_each` to create 4 ECR repositories: de-team-base, de-team-code, sales-team-base, sales-team-code. Each repo has lifecycle policy (keep 30 recent images) and image scanning on push.
 
@@ -196,7 +196,7 @@ Local wrapper module that calls [`terraform-aws-modules/ecr/aws`](https://regist
 | `repository_urls` | Map of repo name → repository URL |
 | `repository_arns` | Map of repo name → repository ARN |
 
-### ✅ S3 Buckets (community module — 3 Terragrunt units)
+###  S3 Buckets (community module — 3 Terragrunt units)
 
 Uses [`terraform-aws-modules/s3-bucket/aws`](https://registry.terraform.io/modules/terraform-aws-modules/s3-bucket/aws/latest) v5.12.0 directly from Terragrunt. One shared envcommon (`s3.hcl`), each live config overrides `bucket` name. Grouped under `s3/` folder.
 
@@ -208,7 +208,7 @@ Uses [`terraform-aws-modules/s3-bucket/aws`](https://registry.terraform.io/modul
 
 All buckets: versioning enabled, SSE-S3 encryption, all public access blocked.
 
-### ✅ IAM Policies + IRSA Roles (community modules — 4 Terragrunt units)
+###  IAM Policies + IRSA Roles (community modules — 4 Terragrunt units)
 
 Uses [`terraform-aws-modules/iam/aws//modules/iam-policy`](https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest) v6.6.0 and [`iam-role-for-service-accounts`](https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest) v6.6.0. Two shared envcommon files (`dagster-irsa-policy.hcl`, `dagster-irsa-role.hcl`), each live config provides team-specific inputs. Grouped under `dagster-irsa/` folder.
 
@@ -219,7 +219,7 @@ Uses [`terraform-aws-modules/iam/aws//modules/iam-policy`](https://registry.terr
 | `dagster-irsa/sales-team-policy/` | IAM Policy | Athena, S3 data lake read/write, Glue catalog |
 | `dagster-irsa/sales-team-role/` | IRSA Role | Binds policy to `dagster:dagster-sales-team` service account |
 
-### ✅ GitHub Actions OIDC (community modules — 2 Terragrunt units)
+###  GitHub Actions OIDC (community modules — 2 Terragrunt units)
 
 Uses [`terraform-aws-modules/iam/aws//modules/iam-oidc-provider`](https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest/submodules/iam-oidc-provider) and [`iam-role`](https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest/submodules/iam-role) v6.6.0 with `enable_github_oidc`. Creates the OIDC identity provider and an IAM role for GitHub Actions CI/CD pipeline with ECR push permissions. Grouped under `github-oidc/` folder.
 
@@ -234,7 +234,7 @@ cd infra/non-prod/ap-southeast-1/github-oidc/role
 terragrunt output arn
 ```
 
-### ✅ Glue (`infra/modules/glue/`)
+###  Glue (`infra/modules/glue/`)
 
 Local module creating Glue Data Catalog databases for dbt schemas (staging, intermediate, marts) using `aws_glue_catalog_database` with `for_each`. Each database points to the S3 data lake bucket.
 
@@ -243,7 +243,7 @@ Local module creating Glue Data Catalog databases for dbt schemas (staging, inte
 | `database_names` | Map of schema name → Glue database name |
 | `catalog_id` | Glue Catalog ID (AWS account ID) |
 
-### ✅ Docker Image (`infra/modules/docker-image/`)
+###  Docker Image (`infra/modules/docker-image/`)
 
 Builds and pushes Base Images to ECR using `null_resource` + `local-exec` provisioner. Only rebuilds when the Dockerfile content changes (triggered by `filemd5` hash). Extracts ECR registry and AWS region from the repository URL automatically.
 
@@ -259,7 +259,7 @@ Builds and pushes Base Images to ECR using `null_resource` + `local-exec` provis
 | `image_uri` | Full image URI (ecr_url:tag) |
 | `dockerfile_hash` | MD5 hash of the Dockerfile for change detection |
 
-### ✅ ArgoCD App-of-Apps (`argocd/`)
+###  ArgoCD App-of-Apps (`argocd/`)
 
 Helm charts and Kubernetes manifests for ArgoCD GitOps deployment. Uses the App-of-Apps pattern with sync waves for ordered deployment.
 
@@ -279,7 +279,7 @@ Dagster user code deployments:
 - `de-team`: dbt-spark, PipesEMRContainersClient, service account with IRSA
 - `sales-team`: dbt-athena, service account with IRSA
 
-### ✅ dbt Projects (Application Code Repo)
+###  dbt Projects (Application Code Repo)
 
 Two dbt projects, one per team code location, both writing Iceberg tables to the same S3 Data Lake via Glue Data Catalog.
 
@@ -297,7 +297,7 @@ de-team sample models:
 sales-team sample models:
 - `stg_sales` (staging, table) — selects from raw sales source via Athena
 
-### ✅ Dagster Application Code — sales-team (`dbt-dagster-project/sales-team/dagster_project/`)
+###  Dagster Application Code — sales-team (`dbt-dagster-project/sales-team/dagster_project/`)
 
 Complete Dagster code location for the sales-team, using dbt-athena assets that run dbt directly on the Dagster user code pod via `DbtCliResource`. Queries execute on Amazon Athena — no Spark/EMR needed.
 
@@ -308,7 +308,7 @@ Complete Dagster code location for the sales-team, using dbt-athena assets that 
 | Resources | `resources/__init__.py` | `DbtCliResource` factory for dbt-athena |
 | Definitions | `definitions.py` | Entry point registering all assets and resources |
 
-### ✅ CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
+###  CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
 
 GitHub Actions workflow that builds Code Images and updates ArgoCD on push to main. Only rebuilds the code location(s) whose files changed (path filters via `dorny/paths-filter`).
 
@@ -332,7 +332,7 @@ Four Dockerfiles following the Base Image + Code Image pattern:
 | `sales-team/Dockerfile.base` | `python:3.10-slim` | dbt-athena + dagster + dagster-aws + dagster-dbt |
 | `sales-team/Dockerfile.code` | `sales-team-base:latest` | COPY dbt_project + dagster_project |
 
-### ✅ Dagster Application Code — de-team (`dbt-dagster-project/de-team/dagster_project/`)
+###  Dagster Application Code — de-team (`dbt-dagster-project/de-team/dagster_project/`)
 
 Complete Dagster code location for the de-team, including dbt-spark assets that submit Spark jobs to EMR on EKS via Dagster Pipes, Python-only assets, and SparkConfigManager for per-model Spark resource configuration.
 

@@ -14,6 +14,8 @@ sources:
     tables:
       - name: raw_sales
         description: "Raw sales transactions ingested from upstream systems"
+        meta:
+          dagster_group: external_source
         columns:
           - name: sale_id
             description: "Unique identifier for each sale transaction"

@@ -8,39 +8,48 @@ import dagster as dg
 
 
 @dg.asset(
-    deps=["orders"],
+    deps=["orders", "customer_orders"],
     description=(
-        "Validates the orders mart after materialization. "
+        "Extracts orders and customer_orders marts to CSV files and uploads to SFTP server. "
         "Runs directly on the Dagster user code pod — no Spark job needed."
     ),
-    group_name="de_team",
+    group_name="sftp",
+    kinds={"python"},
 )
-def orders_validation(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
-    """Sample Python-only asset that validates the orders mart.
+def orders_files(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
+    """Extract orders data to SFTP.
 
-    Demonstrates:
-    - Dependency on a dbt asset (orders) within the same asset graph
-    - Running lightweight logic directly on the Dagster pod
-    - Returning structured metadata as MaterializeResult
+    Simulates:
+    - Reading from Iceberg tables (orders + customer_orders marts)
+    - Writing CSV files to a local staging directory
+    - Uploading files to an SFTP server for downstream consumers
     """
-    context.log.info("Running post-materialization validation for orders mart")
+    import datetime
 
-    # Placeholder validation logic — in production this could:
-    # - Query Athena/Glue to check row counts
-    # - Verify partition freshness
-    # - Send Slack/email notifications
-    validation_checks = {
-        "schema_exists": True,
-        "table_registered_in_glue": True,
-    }
+    context.log.info("Connecting to SFTP server sftp.partner.example.com:22")
+
+    # Simulated SFTP upload logic
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    files_uploaded = [
+        f"/outbound/orders_{timestamp}.csv",
+        f"/outbound/customer_orders_{timestamp}.csv",
+    ]
+
+    context.log.info(f"Uploading {len(files_uploaded)} files to SFTP...")
+    for file_path in files_uploaded:
+        context.log.info(f"  Uploaded: {file_path}")
+
+    context.log.info("SFTP upload complete")
 
     return dg.MaterializeResult(
         metadata={
-            "validation_checks": len(validation_checks),
-            "all_passed": all(validation_checks.values()),
+            "files_uploaded": len(files_uploaded),
+            "sftp_host": "sftp.partner.example.com",
+            "remote_paths": files_uploaded,
+            "timestamp": timestamp,
         },
     )
 
 
 # Collect all Python-only assets for easy import in definitions.py
-python_only_assets = [orders_validation]
+python_only_assets = [orders_files]

@@ -13,6 +13,8 @@ sources:
     tables:
       - name: raw_orders
         description: "Raw orders table ingested from upstream systems"
+        meta:
+          dagster_group: external_source
         columns:
           - name: order_id
             description: "Unique identifier for each order"
@@ -26,6 +28,23 @@ sources:
             description: "Order total amount"
           - name: currency
             description: "Currency code (e.g. USD, VND)"
+          - name: updated_at
+            description: "Timestamp of last update to this record"
+      - name: raw_customers
+        description: "Raw customers table ingested from CRM system"
+        meta:
+          dagster_group: external_source
+        columns:
+          - name: customer_id
+            description: "Unique identifier for each customer"
+          - name: customer_name
+            description: "Full name of the customer"
+          - name: email
+            description: "Customer email address"
+          - name: region
+            description: "Customer region (e.g. APAC, EMEA, NA)"
+          - name: created_at
+            description: "Timestamp when customer was first created"
           - name: updated_at
             description: "Timestamp of last update to this record"
 
@@ -50,5 +69,26 @@ models:
         description: "Order total amount"
       - name: currency
         description: "Currency code"
+      - name: updated_at
+        description: "Timestamp of last update"
+
+  - name: stg_raw_customers
+    description: "Staged customers — source-conformed with column renaming and type casting"
+    columns:
+      - name: customer_id
+        description: "Unique identifier for each customer"
+        tests:
+          - not_null
+          - unique
+      - name: customer_name
+        description: "Full name of the customer"
+        tests:
+          - not_null
+      - name: email
+        description: "Customer email address"
+      - name: region
+        description: "Customer region"
+      - name: created_at
+        description: "Timestamp when customer was first created"
       - name: updated_at
         description: "Timestamp of last update"

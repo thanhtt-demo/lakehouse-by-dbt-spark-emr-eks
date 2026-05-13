@@ -691,4 +691,52 @@ INSERT INTO raw.raw_sales VALUES
 ('S001', 'P001', 'C001', DATE '2026-01-15', 10, 29.99, 299.90, 'APAC', TIMESTAMP '2026-01-15 10:00:00'),
 ('S002', 'P002', 'C002', DATE '2026-01-16', 5, 49.99, 249.95, 'EMEA', TIMESTAMP '2026-01-16 11:00:00'),
 ('S003', 'P001', 'C003', DATE '2026-01-17', 3, 29.99, 89.97, 'NA', TIMESTAMP '2026-01-17 09:00:00')
+
+
+CREATE TABLE raw.raw_orders (
+    order_id     STRING,
+    customer_id  STRING,
+    order_date   DATE,
+    status       STRING,
+    amount       DOUBLE,
+    currency     STRING,
+    updated_at   TIMESTAMP
+)
+LOCATION 's3://lakehouse-at-scale-data-lake/warehouse/raw/raw_orders/'
+TBLPROPERTIES ('table_type' = 'ICEBERG')
+
+INSERT INTO raw.raw_orders VALUES
+('O001', 'C001', DATE '2026-01-15', 'completed', 299.90, 'USD', TIMESTAMP '2026-01-15 10:00:00'),
+('O002', 'C002', DATE '2026-01-16', 'completed', 249.95, 'USD', TIMESTAMP '2026-01-16 11:00:00'),
+('O003', 'C003', DATE '2026-01-17', 'pending',    89.97, 'USD', TIMESTAMP '2026-01-17 09:00:00'),
+('O004', 'C001', DATE '2026-01-18', 'cancelled', 150.00, 'USD', TIMESTAMP '2026-01-18 12:30:00'),
+('O005', 'C004', DATE '2026-01-19', 'completed', 420.50, 'USD', TIMESTAMP '2026-01-19 14:15:00');
+```
+
+
+## Create raw_customers table and insert sample data
+
+```sql
+-- Create Iceberg table raw_customers in Glue Data Catalog (raw database)
+CREATE TABLE raw.raw_customers (
+    customer_id     STRING,
+    customer_name   STRING,
+    email           STRING,
+    region          STRING,
+    created_at      TIMESTAMP,
+    updated_at      TIMESTAMP
+)
+USING iceberg
+LOCATION 's3://lakehouse-at-scale-data-lake/raw/raw_customers/';
+
+-- Insert sample data
+INSERT INTO raw.raw_customers VALUES
+    ('C001', 'Nguyen Van A',  'nguyenvana@example.com',  'APAC', TIMESTAMP '2024-01-15 08:00:00', TIMESTAMP '2024-06-01 10:30:00'),
+    ('C002', 'Tran Thi B',    'tranthib@example.com',    'APAC', TIMESTAMP '2024-02-20 09:15:00', TIMESTAMP '2024-07-10 14:00:00'),
+    ('C003', 'Le Van C',      'levanc@example.com',      'APAC', TIMESTAMP '2024-03-10 11:00:00', TIMESTAMP '2024-08-05 16:45:00'),
+    ('C004', 'John Smith',    'john.smith@example.com',  'NA',   TIMESTAMP '2024-01-05 07:30:00', TIMESTAMP '2024-09-12 09:00:00'),
+    ('C005', 'Emma Johnson',  'emma.j@example.com',      'NA',   TIMESTAMP '2024-04-18 13:00:00', TIMESTAMP '2024-10-01 11:20:00'),
+    ('C006', 'Hans Mueller',  'hans.m@example.com',      'EMEA', TIMESTAMP '2024-05-22 10:45:00', TIMESTAMP '2024-10-15 08:30:00'),
+    ('C007', 'Pham Thi D',    'phamthid@example.com',    'APAC', TIMESTAMP '2024-06-01 14:30:00', TIMESTAMP '2024-11-01 17:00:00'),
+    ('C008', 'Maria Garcia',  'maria.g@example.com',     'EMEA', TIMESTAMP '2024-07-12 09:00:00', TIMESTAMP '2024-11-20 12:15:00');
 ```
