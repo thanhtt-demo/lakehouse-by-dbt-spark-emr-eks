@@ -15,7 +15,7 @@ dagster:
     create: true
     name: dagster
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260510061626768400000001"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260513070236482800000001"
   # ---------------------------------------------------------------------------
   # COMPUTE LOG MANAGER — persist stdout/stderr to S3 for viewing in Dagster UI
   # upload_interval = 30 so the stdout/stderr tabs stream every 30 s during a
@@ -90,7 +90,7 @@ dagster:
       create: true
       name: dagster-user-deployments
       annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260510061626768400000001"
+        eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260513070236482800000001"
     deployments:
       # -------------------------------------------------------------------------
 
@@ -130,9 +130,9 @@ dagster:
           - name: DAGSTER_HOME
             value: "/home/hadoop/dagster_home"
           - name: EMR_VIRTUAL_CLUSTER_ID
-            value: "7rkf3p438vux13mtz4ul921a4"
+            value: "6xz3dz6b8552jr16hzn4ly460"
           - name: EMR_EXECUTION_ROLE_ARN
-            value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260510061545521500000001"
+            value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260513070152272100000001"
           - name: SPARK_CODE_IMAGE_URI
             value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code:d30e01bc"
           - name: PIPES_S3_BUCKET
