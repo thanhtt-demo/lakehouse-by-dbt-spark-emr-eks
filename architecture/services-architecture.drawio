@@ -1,0 +1,297 @@
+<mxfile host="app.diagrams.net" modified="2026-05-13" agent="Kiro" version="24.0.0" type="device">
+  <diagram id="lakehouse-services-arch" name="Services Architecture">
+    <mxGraphModel dx="1900" dy="1500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============================================================ -->
+        <!-- AWS CLOUD BOUNDARY -->
+        <!-- ============================================================ -->
+        <mxCell id="aws-cloud" value="AWS Cloud (ap-southeast-1)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=5;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="180" width="1840" height="1280" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- VPC CONTAINER -->
+        <!-- ============================================================ -->
+        <mxCell id="vpc" value="VPC" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=5;dashed=0;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="60" y="240" width="900" height="1180" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- EKS CLUSTER -->
+        <!-- ============================================================ -->
+        <mxCell id="eks-cluster" value="Amazon EKS Cluster" style="shape=mxgraph.aws4.eks;fillColor=#ED7100;fontColor=#ffffff;strokeColor=none;fontSize=12;fontStyle=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="290" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- EKS Container -->
+        <mxCell id="eks-box" value="EKS Cluster" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;dashPattern=8 8;verticalAlign=top;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="370" width="850" height="1020" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- DAGSTER ZONE -->
+        <!-- ============================================================ -->
+        <mxCell id="dagster-zone" value="Dagster (Orchestrator)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="420" width="380" height="340" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dagster-webserver" value="Dagster&#xa;Webserver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="130" y="470" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dagster-daemon" value="Dagster&#xa;Daemon" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="470" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dagster-de-team" value="de-team&#xa;Code Location&#xa;(dbt-spark)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="560" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dagster-sales-team" value="sales-team&#xa;Code Location&#xa;(dbt-athena)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="560" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dagster-pipes" value="Dagster Pipes&#xa;(PipesEMRContainersClient)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="130" y="660" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- EMR ON EKS ZONE -->
+        <!-- ============================================================ -->
+        <mxCell id="emr-zone" value="EMR on EKS (Spark)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="800" width="380" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="emr-icon" value="" style="shape=mxgraph.aws4.emr;fillColor=#ED7100;fontColor=#ffffff;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="130" y="840" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="spark-driver" value="Spark Driver Pod&#xa;(On-Demand)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="850" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="spark-executors" value="Spark Executor Pods&#xa;(Spot Instances)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="930" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dbt-spark-session" value="dbt-spark&#xa;(method: session)&#xa;+ Apache Iceberg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e6821e;fontSize=9;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="850" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- KARPENTER -->
+        <!-- ============================================================ -->
+        <mxCell id="karpenter" value="Karpenter&#xa;(Node Autoscaler)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="420" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ARGOCD -->
+        <!-- ============================================================ -->
+        <mxCell id="argocd" value="ArgoCD&#xa;(GitOps)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="500" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- AWS MANAGED SERVICES (outside VPC) -->
+        <!-- ============================================================ -->
+
+        <!-- S3 DATA LAKE with layers -->
+        <mxCell id="s3-zone" value="S3 Data Lake (Iceberg Tables)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="400" width="350" height="380" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-icon" value="" style="shape=mxgraph.aws4.s3;fillColor=#3F8624;fontColor=#ffffff;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="440" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-raw" value="Raw Layer&#xa;(raw/ prefix)&#xa;Source data ingestion" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#82b366;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="510" width="290" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-staging" value="Staging Layer&#xa;(staging/ prefix)&#xa;Cleaned &amp; validated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#82b366;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="590" width="290" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-marts" value="Marts Layer&#xa;(marts/ prefix)&#xa;Business-ready aggregates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="670" width="290" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Pipes bucket -->
+        <mxCell id="s3-pipes" value="S3 Pipes&#xa;(Dagster↔Spark msgs)" style="shape=mxgraph.aws4.s3;fillColor=#3F8624;fontColor=#ffffff;strokeColor=none;fontSize=9;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="850" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Spark Logs -->
+        <mxCell id="s3-spark-logs" value="S3 Spark Logs" style="shape=mxgraph.aws4.s3;fillColor=#3F8624;fontColor=#ffffff;strokeColor=none;fontSize=9;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="850" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- GLUE DATA CATALOG -->
+        <mxCell id="glue" value="AWS Glue&#xa;Data Catalog" style="shape=mxgraph.aws4.glue_data_catalog;fillColor=#8C4FFF;fontColor=#ffffff;strokeColor=none;fontSize=10;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="260" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ECR -->
+        <mxCell id="ecr" value="Amazon ECR&#xa;(Base + Code Images)" style="shape=mxgraph.aws4.ecr;fillColor=#ED7100;fontColor=#ffffff;strokeColor=none;fontSize=10;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="260" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ATHENA -->
+        <mxCell id="athena" value="Amazon Athena&#xa;(sales-team queries)" style="shape=mxgraph.aws4.athena;fillColor=#8C4FFF;fontColor=#ffffff;strokeColor=none;fontSize=10;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="550" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- IAM -->
+        <mxCell id="iam" value="IAM&#xa;(IRSA Roles)" style="shape=mxgraph.aws4.identity_access_management_iam_roles_anywhere;fillColor=#DD344C;fontColor=#ffffff;strokeColor=none;fontSize=9;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="420" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- CI/CD ZONE (outside AWS) -->
+        <!-- ============================================================ -->
+        <mxCell id="cicd-zone" value="CI/CD Pipeline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="50" width="500" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="github" value="GitHub&#xa;Actions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#24292e;fontColor=#ffffff;strokeColor=none;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="90" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="docker-build" value="Docker Build&#xa;(Base + Code)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0db7ed;fontColor=#ffffff;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="90" width="110" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="push-ecr" value="Push to ECR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ED7100;fontColor=#ffffff;strokeColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="90" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- EDGES: CI/CD Flow -->
+        <!-- ============================================================ -->
+        <mxCell id="e-github-docker" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#666666;" edge="1" source="github" target="docker-build" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e-docker-ecr" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#666666;" edge="1" source="docker-build" target="push-ecr" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e-pushecr-ecr" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#ED7100;" edge="1" source="push-ecr" target="ecr" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ArgoCD syncs from GitHub -->
+        <mxCell id="e-github-argocd" value="GitOps sync" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#6c8ebf;dashed=1;fontSize=9;" edge="1" source="github" target="argocd" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ArgoCD deploys Dagster -->
+        <mxCell id="e-argocd-dagster" value="deploy" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#6c8ebf;fontSize=9;" edge="1" source="argocd" target="dagster-zone" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- EDGES: Data Flow (ANIMATED) -->
+        <!-- ============================================================ -->
+
+        <!-- Dagster Pipes -> EMR submit job -->
+        <mxCell id="e-dagster-emr" value="Submit Spark Job" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=3;strokeColor=#0078D4;fontSize=9;" edge="1" source="dagster-pipes" target="emr-zone" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EMR reads Raw from S3 -->
+        <mxCell id="e-emr-s3raw" value="Read raw data" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=3;strokeColor=#0078D4;fontSize=9;" edge="1" source="spark-driver" target="s3-raw" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EMR writes Staging -->
+        <mxCell id="e-emr-s3staging" value="Write staging" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=3;strokeColor=#00897B;fontSize=9;" edge="1" source="dbt-spark-session" target="s3-staging" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EMR writes Marts -->
+        <mxCell id="e-emr-s3marts" value="Write marts" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=3;strokeColor=#00897B;fontSize=9;" edge="1" source="dbt-spark-session" target="s3-marts" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EMR registers to Glue -->
+        <mxCell id="e-emr-glue" value="Register metadata" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=2;strokeColor=#5C6BC0;dashed=1;fontSize=9;" edge="1" source="dbt-spark-session" target="glue" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Dagster Pipes <-> S3 Pipes -->
+        <mxCell id="e-dagster-s3pipes" value="Pipes messages" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=2;strokeColor=#F57C00;dashed=1;fontSize=9;" edge="1" source="dagster-pipes" target="s3-pipes" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Spark logs to S3 -->
+        <mxCell id="e-spark-logs" value="Logs" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=1;strokeColor=#666666;dashed=1;fontSize=9;" edge="1" source="spark-executors" target="s3-spark-logs" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sales team -> Athena -->
+        <mxCell id="e-sales-athena" value="Query via Athena" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#8C4FFF;fontSize=9;" edge="1" source="dagster-sales-team" target="athena" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Athena reads from S3 -->
+        <mxCell id="e-athena-s3" value="Read Iceberg" style="edgeStyle=orthogonalEdgeStyle;flowAnimation=1;strokeWidth=2;strokeColor=#8C4FFF;fontSize=9;" edge="1" source="athena" target="s3-marts" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Athena uses Glue catalog -->
+        <mxCell id="e-athena-glue" value="Catalog lookup" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#5C6BC0;dashed=1;fontSize=9;" edge="1" source="athena" target="glue" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Karpenter scales nodes -->
+        <mxCell id="e-karpenter-emr" value="Scale nodes&#xa;(Spot/On-Demand)" style="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#F57C00;dashed=1;fontSize=9;" edge="1" source="karpenter" target="emr-zone" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- LEGEND -->
+        <!-- ============================================================ -->
+        <mxCell id="legend" value="Legend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9cc;strokeColor=#d6b656;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="900" width="330" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-1" value="→ Blue solid (animated): Data read path" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;fontColor=#0078D4;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="940" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-2" value="→ Teal solid (animated): Data write path" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;fontColor=#00897B;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="965" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-3" value="→ Indigo dashed: Metadata/catalog" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;fontColor=#5C6BC0;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="990" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-4" value="→ Amber dashed: Pipes/management" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;fontColor=#F57C00;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="1015" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-5" value="→ Purple: Athena query path" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;fontColor=#8C4FFF;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="1040" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-6" value="→ Grey dashed: Logs/CI-CD" style="text;html=1;fontSize=9;fillColor=none;strokeColor=none;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="1065" width="280" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- DATA FLOW ANNOTATION -->
+        <!-- ============================================================ -->
+        <mxCell id="flow-note" value="Data Flow: Raw → Staging → Marts&#xa;&#xa;1. Dagster triggers Spark job via Pipes&#xa;2. Spark reads raw Iceberg tables from S3&#xa;3. dbt-spark transforms: staging models&#xa;4. dbt-spark transforms: marts models&#xa;5. Metadata registered in Glue Catalog&#xa;6. sales-team queries marts via Athena" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF7FF;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="1130" width="330" height="160" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
