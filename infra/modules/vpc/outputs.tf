@@ -31,3 +31,27 @@ output "vpc_cidr_block" {
   description = "The CIDR block of the VPC"
   value       = aws_vpc.this.cidr_block
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# VPC ENDPOINT OUTPUTS
+# ---------------------------------------------------------------------------------------------------------------------
+
+output "s3_endpoint_id" {
+  description = "ID of the S3 Gateway VPC Endpoint"
+  value       = aws_vpc_endpoint.s3.id
+}
+
+output "ecr_api_endpoint_id" {
+  description = "ID of the ECR API Interface VPC Endpoint"
+  value       = aws_vpc_endpoint.ecr_api.id
+}
+
+output "ecr_dkr_endpoint_id" {
+  description = "ID of the ECR Docker Interface VPC Endpoint"
+  value       = aws_vpc_endpoint.ecr_dkr.id
+}
+
+output "eks_endpoint_id" {
+  description = "ID of the EKS API Interface VPC Endpoint"
+  value       = aws_vpc_endpoint.eks.id
+}

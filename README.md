@@ -143,6 +143,221 @@ dbt-dagster-project/                     #  dbt Projects + Dagster Application C
             └── marts/
 ```
 
+## Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| Terraform | 1.15.1 | `terraform -version` |
+| Terragrunt | 1.0.3 | `terragrunt --version` |
+| AWS CLI v2 | 2.17.0 | `aws --version` |
+| kubectl | 1.29.2 | `kubectl version --client` |
+| Helm | 3.17.0 | `helm version` |
+| Docker | 26.0 | `docker --version` |
+
+### AWS IAM User / Role
+
+You need an IAM user or role with permissions to create: VPC, EKS, EMR, S3, ECR, IAM, Glue, SQS, EventBridge. The simplest approach for non-prod/demo is `AdministratorAccess`.
+
+### AWS CLI Profile
+
+Configure profile name `non-prod` (matching `env.hcl`):
+
+```bash
+aws configure --profile non-prod
+# AWS Access Key ID: <your-key>
+# AWS Secret Access Key: <your-secret>
+# Default region: ap-southeast-1
+# Default output format: json
+```
+
+Verify the profile works:
+
+```bash
+aws sts get-caller-identity --profile non-prod
+```
+
+## How to Run
+
+> **Note:** For simplicity debugging, this guide uses a local PC or EC2 instance as the deployment server for Terragrunt code. In production, use a CI/CD pipeline (GitHub Actions) or a dedicated deployment server.
+
+### 1. Fork & Configure Repository
+
+This repo contains hardcoded references to `thanhtt-demo/lakehouse-by-dbt-spark-emr-eks`. Before deploying:
+
+1. Fork or clone this repo to your own GitHub account
+2. Update the following files with your repo URL:
+   - `infra/_envcommon/argocd.hcl` → `argocd_repo_url`
+   - `argocd/app-of-apps.yaml` → `spec.source.repoURL`
+   - `argocd/apps/values.yaml` → `spec.source.repoURL` and `appProject.sourceRepos`
+3. Push to your repo's `main` branch
+
+### 2. Provision Infrastructure (Terragrunt)
+
+```bash
+# Bootstrap S3 backend + plan all modules
+cd infra/non-prod/ap-southeast-1
+terragrunt run --all plan --backend-bootstrap
+
+# Apply all modules (dependency order resolved automatically)
+terragrunt run --all apply
+```
+
+This step takes approximately **~30 minutes** to deploy all resources:
+
+| Module | Resource | Est. Time |
+|---|---|---|
+| `vpc` | VPC, Subnets, NAT Gateway, Route Tables | ~3 min |
+| `eks` | EKS Cluster, Managed Node Group, OIDC Provider, Addons | ~15 min |
+| `karpenter` | IAM Roles, SQS Queue, EventBridge Rules | ~2 min |
+| `s3/*` | 3 S3 Buckets (data-lake, pipes, spark-logs) | ~1 min |
+| `ecr` | 4 ECR Repositories | ~1 min |
+| `emr-virtual-cluster` | EMR Virtual Cluster, RBAC, IAM Execution Role | ~2 min |
+| `dagster-irsa/*` | 2 IAM Policies + 2 IRSA Roles | ~2 min |
+| `github-oidc/*` | OIDC Provider + IAM Role | ~1 min |
+| `glue` | Glue Data Catalog Databases | ~1 min |
+| `docker-image` | Build & push Base Images to ECR | ~5 min |
+
+### 3. Configure kubectl
+
+```bash
+aws eks update-kubeconfig --name lakehouse-at-scale-eks --region ap-southeast-1 --profile non-prod
+kubectl get nodes
+```
+
+### 4. Bootstrap App-of-Apps
+
+ArgoCD is installed automatically by Terraform (`infra/non-prod/ap-southeast-1/argocd/`). It deploys ArgoCD via Helm and creates the App-of-Apps Application CRD — no manual install needed.
+
+If you need to update ArgoCD Helm values with Terraform outputs (e.g. after EKS recreation):
+
+```bash
+# Populate placeholders in ArgoCD values from Terraform outputs (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts/populate-argocd-values.ps1
+```
+
+### 5. Configure GitHub Actions Secrets
+
+After infrastructure is deployed, configure CI/CD secrets in your GitHub repo (Settings → Secrets → Actions):
+
+```bash
+# Get the OIDC role ARN from Terraform output
+cd infra/non-prod/ap-southeast-1/github-oidc/role
+terragrunt output arn
+```
+
+| Secret | Value |
+|---|---|
+| `AWS_ACCOUNT_ID` | Your AWS account ID (e.g. `560503716668`) |
+| `AWS_OIDC_ROLE_ARN` | Output from `terragrunt output arn` above |
+| `ARGOCD_REPO` | Your repo path (e.g. `your-org/lakehouse-by-dbt-spark-emr-eks`) |
+| `ARGOCD_REPO_PAT` | GitHub PAT with `contents: write` on the repo |
+
+### 6. Access UIs (Port Forward)
+
+> **Note:** Using port-forward to save ALB costs. In production, configure ALB Ingress Controller + domain instead.
+
+```bash
+# ArgoCD UI — https://localhost:8080
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Get ArgoCD admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Dagster UI — http://localhost:3000
+kubectl port-forward svc/dagster-dagster-webserver -n dagster 3000:80
+```
+### 6.2 Create raw table for test(athena query)
+
+```sql
+CREATE TABLE raw.raw_sales (
+	sale_id STRING,
+	product_id STRING,
+	customer_id STRING,
+	sale_date DATE,
+	quantity INT,
+	unit_price DOUBLE,
+	total_amount DOUBLE,
+	region STRING,
+	updated_at TIMESTAMP
+)
+LOCATION 's3://lakehouse-at-scale-data-lake/warehouse/raw/raw_sales/'
+TBLPROPERTIES ('table_type' = 'ICEBERG')
+
+-- Insert sample data
+INSERT INTO raw.raw_sales VALUES
+('S001', 'P001', 'C001', DATE '2026-01-15', 10, 29.99, 299.90, 'APAC', TIMESTAMP '2026-01-15 10:00:00'),
+('S002', 'P002', 'C002', DATE '2026-01-16', 5, 49.99, 249.95, 'EMEA', TIMESTAMP '2026-01-16 11:00:00'),
+('S003', 'P001', 'C003', DATE '2026-01-17', 3, 29.99, 89.97, 'NA', TIMESTAMP '2026-01-17 09:00:00')
+
+
+CREATE TABLE raw.raw_orders (
+    order_id     STRING,
+    customer_id  STRING,
+    order_date   DATE,
+    status       STRING,
+    amount       DOUBLE,
+    currency     STRING,
+    updated_at   TIMESTAMP
+)
+LOCATION 's3://lakehouse-at-scale-data-lake/warehouse/raw/raw_orders/'
+TBLPROPERTIES ('table_type' = 'ICEBERG')
+
+INSERT INTO raw.raw_orders VALUES
+('O001', 'C001', DATE '2026-01-15', 'completed', 299.90, 'USD', TIMESTAMP '2026-01-15 10:00:00'),
+('O002', 'C002', DATE '2026-01-16', 'completed', 249.95, 'USD', TIMESTAMP '2026-01-16 11:00:00'),
+('O003', 'C003', DATE '2026-01-17', 'pending',    89.97, 'USD', TIMESTAMP '2026-01-17 09:00:00'),
+('O004', 'C001', DATE '2026-01-18', 'cancelled', 150.00, 'USD', TIMESTAMP '2026-01-18 12:30:00'),
+('O005', 'C004', DATE '2026-01-19', 'completed', 420.50, 'USD', TIMESTAMP '2026-01-19 14:15:00');
+```
+
+```sql
+-- Create Iceberg table raw_customers in Glue Data Catalog (raw database)
+CREATE TABLE raw.raw_customers (
+    customer_id     STRING,
+    customer_name   STRING,
+    email           STRING,
+    region          STRING,
+    created_at      TIMESTAMP,
+    updated_at      TIMESTAMP
+)
+USING iceberg
+LOCATION 's3://lakehouse-at-scale-data-lake/raw/raw_customers/';
+
+-- Insert sample data
+INSERT INTO raw.raw_customers VALUES
+    ('C001', 'Nguyen Van A',  'nguyenvana@example.com',  'APAC', TIMESTAMP '2024-01-15 08:00:00', TIMESTAMP '2024-06-01 10:30:00'),
+    ('C002', 'Tran Thi B',    'tranthib@example.com',    'APAC', TIMESTAMP '2024-02-20 09:15:00', TIMESTAMP '2024-07-10 14:00:00'),
+    ('C003', 'Le Van C',      'levanc@example.com',      'APAC', TIMESTAMP '2024-03-10 11:00:00', TIMESTAMP '2024-08-05 16:45:00'),
+    ('C004', 'John Smith',    'john.smith@example.com',  'NA',   TIMESTAMP '2024-01-05 07:30:00', TIMESTAMP '2024-09-12 09:00:00'),
+    ('C005', 'Emma Johnson',  'emma.j@example.com',      'NA',   TIMESTAMP '2024-04-18 13:00:00', TIMESTAMP '2024-10-01 11:20:00'),
+    ('C006', 'Hans Mueller',  'hans.m@example.com',      'EMEA', TIMESTAMP '2024-05-22 10:45:00', TIMESTAMP '2024-10-15 08:30:00'),
+    ('C007', 'Pham Thi D',    'phamthid@example.com',    'APAC', TIMESTAMP '2024-06-01 14:30:00', TIMESTAMP '2024-11-01 17:00:00'),
+    ('C008', 'Maria Garcia',  'maria.g@example.com',     'EMEA', TIMESTAMP '2024-07-12 09:00:00', TIMESTAMP '2024-11-20 12:15:00');
+```
+
+
+### 7. Trigger a dbt Run
+
+Once the Dagster UI is accessible, go to Assets → Materialize all to trigger the first dbt run. Dagster will submit a Spark job via EMR on EKS (de-team) or query Athena (sales-team).
+
+### 8. Cleanup (Stop Billing)
+
+```bash
+# 1. Remove ArgoCD-managed K8s resources
+kubectl delete -f argocd/app-of-apps.yaml --ignore-not-found
+kubectl delete namespace dagster spark --ignore-not-found
+kubectl delete nodeclaim,nodepool --all --ignore-not-found
+
+# 2. Empty S3 buckets (versioning enabled, --force deletes all versions)
+aws s3 rb s3://lakehouse-at-scale-data-lake --force --profile non-prod
+aws s3 rb s3://lakehouse-at-scale-pipes --force --profile non-prod
+aws s3 rb s3://lakehouse-at-scale-spark-logs --force --profile non-prod
+
+# 3. Destroy all Terraform/Terragrunt resources (auto-resolves dependency order)
+cd infra/non-prod/ap-southeast-1
+terragrunt run --all destroy
+```
+
 ## Modules
 
 ###  VPC (`infra/modules/vpc/`)
@@ -372,181 +587,3 @@ terragrunt graph-dependencies
 cd infra/non-prod/ap-southeast-1
 terragrunt run --all destroy
 ```
-
-## Docker Images (Local Testing Only)
-
-Base Images are built and pushed to ECR by the Terraform `docker-image` module (`terragrunt apply` in `infra/non-prod/ap-southeast-1/docker-image/`). Code Images are built by the CI/CD pipeline on push to main. The commands below are only needed for local testing before pushing.
-
-```bash
-# Build de-team base image locally
-cd dbt-dagster-project/de-team
-docker build -f Dockerfile.base -t de-team-base:latest .
-
-# Build de-team code image locally
-docker build -f Dockerfile.code --build-arg BASE_IMAGE=de-team-base:latest -t de-team-code:latest .
-
-# Build sales-team base image locally
-cd dbt-dagster-project/sales-team
-docker build -f Dockerfile.base -t sales-team-base:latest .
-
-# Build sales-team code image locally
-docker build -f Dockerfile.code --build-arg BASE_IMAGE=sales-team-base:latest -t sales-team-code:latest .
-```
-
-## Smoke Testing de-team Images
-
-Two scripts help verify the de-team Base + Code image before (or without) going through the full Dagster → EMR run path. Use these when iterating on `Dockerfile.base`, Python dependencies, or Spark configuration.
-
-### Local build + import check (`scripts/smoke-test-de-team-image.local.sh`)
-
-Builds the Base Image and runs a quick `import` test using `python3.11` (matching EMR on EKS 7.13's `PYSPARK_PYTHON`). No ECR push, no AWS calls.
-
-```bash
-# Default tag (de-team-base:local-smoke)
-./scripts/smoke-test-de-team-image.local.sh
-
-# Custom tag
-./scripts/smoke-test-de-team-image.local.sh my-tag
-```
-
-Use this as the fast feedback loop when changing `Dockerfile.base` or pinned package versions. Script runs in Git Bash / WSL / Linux.
-
-### Remote EMR on EKS job submit (`scripts/smoke-test-de-team-image.ps1`)
-
-Submits a minimal Spark job to the existing EMR Virtual Cluster using a Code Image tag already in ECR. Verifies end-to-end that the Spark driver can:
-
-- Start with Iceberg extensions from `--jars`
-- Import `dagster_pipes`, `dbt`, `boto3` in python3.11
-- Create and stop a `SparkSession`
-
-Does not build or push images — use the local script (or CI) first. Does not touch the running Dagster deployment.
-
-```powershell
-# Default: resolves the latest tag in lakehouse-at-scale/de-team-code
-.\scripts\smoke-test-de-team-image.ps1
-
-# Pin a specific tag already in ECR
-.\scripts\smoke-test-de-team-image.ps1 -Tag 81421f60
-
-# Override defaults (e.g. after VC or execution role is recreated)
-.\scripts\smoke-test-de-team-image.ps1 `
-    -Tag 81421f60 `
-    -VirtualClusterId <vc-id> `
-    -ExecutionRoleArn <role-arn>
-```
-
-The script uploads an inline smoke script to `s3://lakehouse-at-scale-pipes/smoke-tests/`, submits the EMR job, then polls until the job reaches a terminal state. `COMPLETED` = pass; on `FAILED` it prints `failureReason` + `stateDetails`.
-
-### Remote dbt build on EMR on EKS (`scripts/smoke-test-dbt-model.ps1`)
-
-Submits a Spark job that actually runs `dbt build --select <model>` using a Code Image already in ECR. The driver uses a debug runner uploaded to S3 (not the baked-in `/app/entrypoint.py`) and ships logs to CloudWatch + S3 — so Dagster Pipes is bypassed entirely and you see full dbt output (stdout, `run_results.json`, `dbt.log` tail).
-
-The runner also:
-
-- Writes a fresh `profiles.yml` to `/tmp` so you don't have to rebuild the Code Image to test profile changes.
-- Redirects dbt `target/` and `logs/` to `/tmp` (EMR driver pods have a read-only root filesystem).
-
-Use this when:
-
-- Validating a change to `entrypoint.py`, `profiles.yml`, Dockerfile, or a dbt model without round-tripping through Dagster.
-- Reproducing a production dbt error locally with the exact same image + IAM + Glue catalog as Dagster uses.
-
-```powershell
-# Default: dbt build stg_raw_orders against the latest tag in ECR
-.\scripts\smoke-test-dbt-model.ps1
-
-# Different model + pin image tag
-.\scripts\smoke-test-dbt-model.ps1 -Model orders -Tag abc12345
-
-# After VC or execution role recreation
-.\scripts\smoke-test-dbt-model.ps1 `
-    -Model stg_raw_orders `
-    -VirtualClusterId <vc> `
-    -ExecutionRoleArn <role>
-```
-
-When the job fails, the script prints the CloudWatch log group/prefix and an `aws s3 cp` one-liner to fetch the driver stdout (where the `[smoke] ...` lines and the full dbt error live) once EMR syncs logs.
-
-## CI/CD (GitHub Actions)
-
-The CI/CD pipeline (`dbt-dagster-project/.github/workflows/ci-cd.yml`) requires 4 GitHub repository secrets. Here's how to obtain each one:
-
-| Secret | How to obtain |
-|---|---|
-| `AWS_ACCOUNT_ID` | Your AWS account ID (`560503716668` for non-prod). Find it in the AWS Console top-right corner, or run `aws sts get-caller-identity --query Account --output text --profile non-prod` |
-| `AWS_OIDC_ROLE_ARN` | Managed by Terragrunt: `cd infra/non-prod/ap-southeast-1/github-oidc && terragrunt run --all apply`, then `cd role && terragrunt output arn`. This creates the OIDC provider + IAM role with ECR push permissions, restricted to main branch |
-| `ARGOCD_REPO` | The `owner/repo` path of your ArgoCD App Repo on GitHub (e.g. `thanhtt-demo/argocd-app-repo`). This is the repo that contains `argocd/dagster/values.yaml` where image tags are updated |
-| `ARGOCD_REPO_PAT` | A GitHub Personal Access Token (classic or fine-grained) with `contents: write` permission on the ArgoCD App Repo. Create one at GitHub → Settings → Developer settings → Personal access tokens. The CI/CD pipeline uses this to push image tag updates to the ArgoCD repo |
-
-To add these secrets: GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
-
-## ArgoCD
-
-After Terraform modules are applied, populate ArgoCD Helm values with actual infrastructure outputs:
-
-```bash
-# Populate placeholders in ArgoCD values from Terraform outputs (creates a PR)
-# Run from repo root in PowerShell:
-powershell -ExecutionPolicy Bypass -File scripts/populate-argocd-values.ps1
-```
-
-Then access ArgoCD and bootstrap:
-
-```bash
-Set-Alias -Name k -Value kubectl
-
-# Bootstrap — apply once to deploy everything
-kubectl apply -f argocd/app-of-apps.yaml
-
-# Validate App-of-Apps root chart
-helm template argocd/apps/
-
-# Validate Karpenter chart (requires helm dependency build first)
-helm dependency build argocd/karpenter/
-helm template argocd/karpenter/
-
-# Validate Dagster chart (requires helm dependency build first)
-helm dependency build argocd/dagster/
-helm template argocd/dagster/
-```
-
-## Cleanup (Destroy All Resources)
-
-To destroy all resources and stop billing:
-
-```bash
-# 1. Remove ArgoCD-managed K8s resources
-kubectl delete -f argocd/app-of-apps.yaml --ignore-not-found
-kubectl delete namespace dagster --ignore-not-found
-kubectl delete namespace spark --ignore-not-found
-kubectl delete nodeclaim --all --ignore-not-found
-kubectl delete nodepool --all --ignore-not-found
-
-# 2. Terminate Karpenter EC2 instances (orphan ENIs block EKS destroy)
-aws ec2 describe-instances --filters "Name=tag:karpenter.sh/discovery,Values=lakehouse-at-scale-eks" "Name=instance-state-name,Values=running,stopped" --query "Reservations[].Instances[].InstanceId" --output text --profile non-prod --region ap-southeast-1
-# Then: aws ec2 terminate-instances --instance-ids <IDs> --profile non-prod --region ap-southeast-1
-
-# 3. Empty S3 buckets (versioning enabled, so need --force to delete all versions)
-aws s3 rb s3://lakehouse-at-scale-data-lake --force --profile non-prod
-aws s3 rb s3://lakehouse-at-scale-pipes --force --profile non-prod
-aws s3 rb s3://lakehouse-at-scale-spark-logs --force --profile non-prod
-
-# 4. Destroy all Terraform/Terragrunt resources (auto-resolves dependency order)
-cd infra/non-prod/ap-southeast-1
-terragrunt run --all destroy
-
-# 5. (Optional) Delete ECR images to avoid storage costs
-aws ecr batch-delete-image --repository-name lakehouse-at-scale/de-team-base --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
-aws ecr batch-delete-image --repository-name lakehouse-at-scale/de-team-code --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
-aws ecr batch-delete-image --repository-name lakehouse-at-scale/sales-team-base --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
-aws ecr batch-delete-image --repository-name lakehouse-at-scale/sales-team-code --image-ids imageTag=latest --profile non-prod --region ap-southeast-1
-```
-
-If `terragrunt run --all destroy` gets stuck on EKS, ensure all K8s namespaces and node claims are deleted first. EKS cluster deletion requires all managed node groups and Fargate profiles to be removed, which Terraform handles automatically.
-
-## Related Repositories
-
-| Repo | Contents |
-|---|---|
-| ArgoCD App Repo | Helm charts, K8s manifests (App-of-Apps pattern) |
-| Application Code Repo | dbt projects + Dagster code (de-team, sales-team) |

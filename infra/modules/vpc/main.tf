@@ -134,3 +134,94 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# VPC ENDPOINTS
+# Gateway Endpoint for S3 (free) — eliminates NAT charges for S3/ECR image layer traffic.
+# Interface Endpoints for ECR + EKS API — eliminates NAT charges for API calls.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# S3 Gateway Endpoint (FREE — no hourly or data charges)
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+
+  tags = merge(var.tags, {
+    Name = "${var.name}-vpce-s3"
+  })
+}
+
+# Security group for Interface Endpoints (allow HTTPS from VPC CIDR)
+resource "aws_security_group" "vpc_endpoints" {
+  name_prefix = "${var.name}-vpce-"
+  vpc_id      = aws_vpc.this.id
+  description = "Security group for VPC Interface Endpoints"
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "HTTPS from VPC"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound"
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.name}-vpce-sg"
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ECR API Interface Endpoint (auth token requests)
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = [aws_subnet.private[0].id]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = merge(var.tags, {
+    Name = "${var.name}-vpce-ecr-api"
+  })
+}
+
+# ECR Docker Interface Endpoint (image layer pulls)
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = [aws_subnet.private[0].id]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = merge(var.tags, {
+    Name = "${var.name}-vpce-ecr-dkr"
+  })
+}
+
+# EKS API Interface Endpoint (kubectl/API server calls from within VPC)
+resource "aws_vpc_endpoint" "eks" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${var.aws_region}.eks"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = [aws_subnet.private[0].id]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+
+  tags = merge(var.tags, {
+    Name = "${var.name}-vpce-eks"
+  })
+}

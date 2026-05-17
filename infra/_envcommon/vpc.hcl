@@ -33,5 +33,6 @@ inputs = {
     "10.0.103.0/24",
   ]
 
-  name = "lakehouse-at-scale"
+  name       = "lakehouse-at-scale"
+  aws_region = "ap-southeast-1"
 }

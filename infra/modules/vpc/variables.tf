@@ -43,3 +43,9 @@ variable "cluster_name" {
   type        = string
   default     = "lakehouse-at-scale-eks"
 }
+
+variable "aws_region" {
+  description = "AWS region — used for VPC Endpoint service names"
+  type        = string
+  default     = "ap-southeast-1"
+}
