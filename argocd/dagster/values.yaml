@@ -100,7 +100,7 @@ dagster:
       - name: de-team
         image:
           repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-          tag: "cf2f3e9b"
+          tag: "30cabea2"
           pullPolicy: Always
         dagsterApiGrpcArgs:
           - "--module-name"
@@ -134,7 +134,7 @@ dagster:
           - name: EMR_EXECUTION_ROLE_ARN
             value: "arn:aws:iam::560503716668:role/lakehouse-at-scale-emr-execution-20260607035810226400000001"
           - name: SPARK_CODE_IMAGE_URI
-            value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code:cf2f3e9b"
+            value: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code:30cabea2"
           - name: PIPES_S3_BUCKET
             value: "lakehouse-at-scale-pipes"
           - name: SPARK_S3_LOGS_URI
