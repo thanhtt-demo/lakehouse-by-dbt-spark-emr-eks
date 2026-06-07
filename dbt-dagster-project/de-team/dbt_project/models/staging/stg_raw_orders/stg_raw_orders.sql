@@ -13,7 +13,7 @@
 -- Materialization + Spark config declared in stg_raw_orders.yml. Maps to Glue database: staging.
 -- ---------------------------------------------------------------------------------------------------------------------
 
-{% set num_orders = var('skew_num_orders', 5000000) %}
+{% set num_orders = var('skew_num_orders', 50000000) %}
 
 with generated as (
 
