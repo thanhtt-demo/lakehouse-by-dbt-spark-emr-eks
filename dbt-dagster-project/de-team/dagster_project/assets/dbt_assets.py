@@ -1,8 +1,16 @@
 # ---------------------------------------------------------------------------------------------------------------------
-# DBT ASSETS — de-team (dbt-spark on EMR on EKS)
-# Each dbt model maps 1:1 to a Dagster asset. Execution is delegated to Spark via EMR on EKS
-# using PipesEMRContainersClient. The Spark pod runs `dbt build --select model_name` to preserve
-# full dbt features (incremental models, tests, hooks, macros).
+# DBT ASSETS — de-team (dbt-spark on EKS)
+# Each dbt model maps 1:1 to a Dagster asset. To get a real per-model Spark driver, each model
+# is its own @dbt_assets(select=<model>) op (NOT one multi-asset op). With the k8s_job_executor,
+# every model runs in its own step pod, sized from the model's driver_cpu/driver_memory.
+#
+# Execution backend is resolved per-model from spark_config.mode (utils/spark_config.py):
+#   - eks_client     : dbt runs in-process in the step pod, which acts as the Spark driver in
+#                      client mode (master k8s). No EMR uplift. (default)
+#   - emr_containers : submit to EMR on EKS Virtual Cluster via PipesEMRContainersClient.
+#
+# Toggle globally in dbt_project.yml `vars.spark_submit_mode`, or per-model in
+# `meta.spark_config.mode`.
 # ---------------------------------------------------------------------------------------------------------------------
 
 import functools
@@ -10,13 +18,18 @@ import json
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional
 
-from dagster import EnvVar
 from dagster_aws.pipes import PipesEMRContainersClient
 from dagster_dbt import DagsterDbtTranslator, DbtProject, dbt_assets
 
-from ..utils.spark_config import SparkConfigManager
+from ..spark_backends import run_eks_client, run_emr_containers
+from ..utils.spark_config import (
+    DEFAULT_SPARK_PROPERTIES,
+    SPARK_MODE_EKS_CLIENT,
+    SparkConfigManager,
+    read_project_default_mode,
+)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -25,8 +38,10 @@ from ..utils.spark_config import SparkConfigManager
 # Prod: manifest precompiled in Code_Image via `dagster-dbt project prepare-and-package`
 # ---------------------------------------------------------------------------------------------------------------------
 
+_PROJECT_DIR = Path(__file__).joinpath("..", "..", "..", "dbt_project").resolve()
+
 dbt_project = DbtProject(
-    project_dir=Path(__file__).joinpath("..", "..", "..", "dbt_project").resolve(),
+    project_dir=_PROJECT_DIR,
     packaged_project_dir=(
         Path("/opt/dagster/app/dbt-project")
         if os.getenv("DAGSTER_ENV") == "prod"
@@ -48,13 +63,17 @@ def get_parsed_manifest() -> dict:
         return json.load(f)
 
 
-def _find_model_in_manifest(model_name: str) -> Optional[dict]:
-    """Find a model node in the dbt manifest by name."""
-    manifest = get_parsed_manifest()
+def _iter_model_nodes(manifest: dict):
+    """Yield (model_name, node) for every dbt model in the manifest."""
     for _node_id, node in manifest.get("nodes", {}).items():
-        if node.get("resource_type") == "model" and node.get("name") == model_name:
-            return node
-    return None
+        if node.get("resource_type") == "model":
+            yield node.get("name"), node
+
+
+def _model_spark_config_meta(node: dict) -> Optional[dict]:
+    """Read meta.spark_config from a model node (supports node.meta and node.config.meta)."""
+    meta = node.get("meta") or node.get("config", {}).get("meta", {}) or {}
+    return meta.get("spark_config")
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -69,13 +88,6 @@ class SparkDbtTranslator(DagsterDbtTranslator):
     """
 
     def get_group_name(self, dbt_resource_props: Mapping[str, Any]) -> Optional[str]:
-        """Derive Dagster group from dbt resource properties.
-
-        Priority:
-        1. meta.dagster_group (per-resource, set in schema.yml) — flexible per table/model
-        2. fqn[1] for models (folder-based: staging/intermediate/marts)
-        3. "default" fallback
-        """
         meta = dbt_resource_props.get("meta", {})
         if meta.get("dagster_group"):
             return meta["dagster_group"]
@@ -92,68 +104,68 @@ class SparkDbtTranslator(DagsterDbtTranslator):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# DBT ASSETS DEFINITION
-# Each dbt model becomes a Dagster asset. On materialize, a Spark job is submitted to EMR on EKS.
-# The Spark pod runs `dbt build --select model_name` and reports results back via Dagster Pipes.
+# PER-MODEL ASSET FACTORY
+# Builds one @dbt_assets op per model. Config + mode are resolved at definition time so op_tags
+# (driver pod size) are correct; the resolved config is captured in the closure and reused at
+# runtime to dispatch to the right backend.
 # ---------------------------------------------------------------------------------------------------------------------
 
-@dbt_assets(
-    manifest=dbt_project.manifest_path,
-    dagster_dbt_translator=SparkDbtTranslator(),
+# Definition-time config manager: same defaults + project mode as the runtime resource, so the
+# driver-pod op_tags computed here match the config used at runtime.
+_PROJECT_DEFAULT_MODE = read_project_default_mode(str(_PROJECT_DIR))
+_codegen_config_manager = SparkConfigManager(
+    default_spark_properties={**DEFAULT_SPARK_PROPERTIES},
+    default_mode=_PROJECT_DEFAULT_MODE,
 )
-def de_team_dbt_assets(
-    context,
-    pipes_emr_containers_client: PipesEMRContainersClient,
-    spark_config_manager: SparkConfigManager,
-):
-    """dbt assets for de-team — each model runs on Spark via EMR on EKS.
+_translator = SparkDbtTranslator()
 
-    Execution flow:
-    1. Read manifest to identify which models to materialize
-    2. Read spark_config from dbt model meta, merge with defaults
-    3. Submit Spark job via PipesEMRContainersClient
-    4. Spark pod runs `dbt build` (run + test)
-    5. entrypoint.py reports materialization + test results via Pipes
-    """
-    # Read runtime config from environment
-    virtual_cluster_id = os.getenv("EMR_VIRTUAL_CLUSTER_ID", "")
-    execution_role_arn = os.getenv("EMR_EXECUTION_ROLE_ARN", "")
-    # SPARK_CODE_IMAGE_URI carries the full ECR URI including tag (e.g. `...repo:<sha>`).
-    # CI/CD updates this in lock-step with the Dagster user-deployment `image.tag` so the
-    # Spark driver/executor pods always pull the same image version as the Dagster run pod.
-    code_image_uri = os.getenv("SPARK_CODE_IMAGE_URI", "")
-    # Log sinks for Spark driver/executor — critical for debugging failed dbt runs.
-    s3_logs_uri = os.getenv("SPARK_S3_LOGS_URI", "")
-    cloudwatch_log_group = os.getenv("SPARK_CLOUDWATCH_LOG_GROUP", "")
 
-    for asset_key in context.selected_asset_keys:
-        model_name = asset_key.path[-1]
+def _build_model_assets(model_name: str, config):
+    """Create a single-model @dbt_assets op that dispatches to the resolved Spark backend."""
+    op_tags = SparkConfigManager.build_k8s_driver_op_tags(config)
 
-        # Find model in manifest to read spark_config from meta
-        model_node = _find_model_in_manifest(model_name)
-        model_meta = model_node.get("meta", {}).get("spark_config") if model_node else None
+    @dbt_assets(
+        manifest=dbt_project.manifest_path,
+        select=model_name,
+        name=model_name,
+        dagster_dbt_translator=_translator,
+        op_tags=op_tags,
+    )
+    def _model_assets(
+        context,
+        pipes_emr_containers_client: PipesEMRContainersClient,
+        spark_config_manager: SparkConfigManager,
+    ):
+        if config.mode == SPARK_MODE_EKS_CLIENT:
+            yield from run_eks_client(
+                context,
+                model_name=model_name,
+                config=config,
+                spark_config_manager=spark_config_manager,
+            )
+        else:
+            yield from run_emr_containers(
+                context,
+                model_name=model_name,
+                config=config,
+                spark_config_manager=spark_config_manager,
+                pipes_emr_containers_client=pipes_emr_containers_client,
+            )
 
-        # Merge spark config (model meta takes priority over default)
-        config = spark_config_manager.merge_config(model_meta)
-        params = spark_config_manager.build_start_job_run_params(
-            config=config,
-            virtual_cluster_id=virtual_cluster_id,
-            execution_role_arn=execution_role_arn,
-            image_uri=code_image_uri,
-            run_id=context.run_id,
-            s3_logs_uri=s3_logs_uri,
-            cloudwatch_log_group=cloudwatch_log_group,
-        )
+    return _model_assets
 
-        # Submit Spark job — entrypoint.py runs `dbt build --select model_name`
-        invocation = pipes_emr_containers_client.run(
-            context=context,
-            start_job_run_params=params,
-            extras={
-                "model_name": model_name,
-                "dbt_command": "build",
-            },
-        )
 
-        # Yield all events (MaterializeResult + AssetCheckResult) from Pipes
-        yield from invocation.get_results()
+def build_de_team_dbt_assets() -> List[Any]:
+    """Build the list of per-model @dbt_assets ops for the de-team dbt project."""
+    manifest = get_parsed_manifest()
+    assets: List[Any] = []
+    for model_name, node in _iter_model_nodes(manifest):
+        if not model_name:
+            continue
+        config = _codegen_config_manager.merge_config(_model_spark_config_meta(node))
+        assets.append(_build_model_assets(model_name, config))
+    return assets
+
+
+# All per-model dbt assets for the de-team code location.
+de_team_dbt_assets = build_de_team_dbt_assets()

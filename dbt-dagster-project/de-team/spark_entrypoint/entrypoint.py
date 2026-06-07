@@ -59,12 +59,26 @@ def main() -> None:
             #    --log-path (also set env vars as a safety net for child processes).
             from dbt.cli.main import dbtRunner
 
+            import shutil
             import tempfile
             dbt_tmp = tempfile.mkdtemp(prefix="dbt-", dir="/tmp")
             target_path = os.path.join(dbt_tmp, "target")
             log_path = os.path.join(dbt_tmp, "logs")
             os.environ["DBT_TARGET_PATH"] = target_path
             os.environ["DBT_LOG_PATH"] = log_path
+
+            # Seed the fresh target with the partial-parse cache baked into the image
+            # (produced by `dagster-dbt project prepare-and-package` in CI) so dbt does a
+            # fast partial parse instead of a full re-parse of the whole project. If the
+            # cache is missing/stale, dbt falls back to a full parse — correctness unaffected.
+            _partial_parse_src = "/app/dbt_project/target/partial_parse.msgpack"
+            if os.path.isfile(_partial_parse_src):
+                try:
+                    os.makedirs(target_path, exist_ok=True)
+                    shutil.copy2(_partial_parse_src, os.path.join(target_path, "partial_parse.msgpack"))
+                    pipes.log.info("seeded partial_parse.msgpack for fast dbt parse")
+                except OSError:
+                    pass
 
             dbt_runner = dbtRunner()
             dbt_args = [

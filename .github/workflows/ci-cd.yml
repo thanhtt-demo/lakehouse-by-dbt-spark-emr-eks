@@ -89,7 +89,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install dagster-dbt CLI
-        run: pip install "dagster-dbt>=0.29,<1.0" "dagster-aws>=0.29,<1.0" "dbt-spark[session]>=1.9,<1.10"
+        # Pin dbt-core EXACTLY to match Dockerfile.base (ARG DBT_CORE_VERSION) so the
+        # partial_parse.msgpack generated here stays valid (reusable) at runtime.
+        # dbt-spark versions independently of dbt-core (latest 1.9.x is 1.9.3).
+        run: pip install "dagster-dbt>=0.29,<1.0" "dagster-aws>=0.29,<1.0" "dbt-core==1.9.4" "dbt-spark[session]==1.9.3"
 
       - name: Prepare and package dbt manifest
         working-directory: dbt-dagster-project/de-team

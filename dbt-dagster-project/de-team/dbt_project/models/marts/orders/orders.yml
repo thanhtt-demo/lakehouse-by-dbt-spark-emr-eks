@@ -16,6 +16,10 @@ models:
       unique_key: order_id
     meta:
       spark_config:
+        # Per-model override of the project-wide spark_submit_mode. This heavy, incremental
+        # model is pinned to the managed EMR runtime; remove to inherit the project default
+        # (eks_client). Valid values: eks_client | emr_containers.
+        mode: "emr_containers"
         driver_cpu: "2"
         driver_memory: "4g"
         executor_cpu: "2"

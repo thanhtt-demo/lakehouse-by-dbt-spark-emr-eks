@@ -29,7 +29,7 @@ metadata:
     # role the Dagster user-deployment SA uses. One role for driver (Dagster step pod) and
     # executors keeps wiring simple; trust for spark:spark is added in the de-team-role unit.
     # ARN must match the dagster-user-deployments SA annotation in argocd/dagster/values.yaml.
-    eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260513070236482800000001"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260607035848292600000001"
 ---
 # ---------------------------------------------------------------------------------------------------------------------
 # ROLE — what the Spark driver (Dagster step pod) may do inside the spark namespace.

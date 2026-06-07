@@ -12,6 +12,18 @@ config-version: 2
 profile: "de_team_lakehouse"
 
 # ---------------------------------------------------------------------------------------------------------------------
+# VARS
+# spark_submit_mode — project-wide default Spark execution backend (the on/off toggle):
+#   eks_client     : dbt runs in-process in the Dagster step pod, which acts as the Spark driver
+#                    in client mode on EKS. No EMR uplift cost. (default)
+#   emr_containers : submit each model to the EMR on EKS Virtual Cluster (managed runtime).
+# Override per-model via meta.spark_config.mode in a model's schema.yml.
+# ---------------------------------------------------------------------------------------------------------------------
+
+vars:
+  spark_submit_mode: "eks_client"
+
+# ---------------------------------------------------------------------------------------------------------------------
 # MODEL PATHS
 # ---------------------------------------------------------------------------------------------------------------------
 
