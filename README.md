@@ -263,6 +263,10 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 # Get ArgoCD admin password
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
+## or run bellow if installed argocd cli
+
+argocd admin initial-password -n argocd
+
 # Dagster UI — http://localhost:3000
 kubectl port-forward svc/dagster-dagster-webserver -n dagster 3000:80
 ```

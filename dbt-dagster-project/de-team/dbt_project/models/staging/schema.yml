@@ -51,6 +51,18 @@ sources:
 models:
   - name: stg_raw_orders
     description: "Staged orders — source-conformed with column renaming and type casting"
+    config:
+      materialized: table
+      file_format: iceberg
+    meta:
+      # Lightweight source-conformed model — runs in-cluster (eks_client), small resources.
+      spark_config:
+        mode: "eks_client"
+        driver_cpu: "1"
+        driver_memory: "2g"
+        executor_cpu: "1"
+        executor_memory: "2g"
+        executor_instances: 1
     columns:
       - name: order_id
         description: "Unique identifier for each order"
@@ -74,6 +86,18 @@ models:
 
   - name: stg_raw_customers
     description: "Staged customers — source-conformed with column renaming and type casting"
+    config:
+      materialized: table
+      file_format: iceberg
+    meta:
+      # Lightweight source-conformed model — runs in-cluster (eks_client), small resources.
+      spark_config:
+        mode: "eks_client"
+        driver_cpu: "1"
+        driver_memory: "2g"
+        executor_cpu: "1"
+        executor_memory: "2g"
+        executor_instances: 1
     columns:
       - name: customer_id
         description: "Unique identifier for each customer"

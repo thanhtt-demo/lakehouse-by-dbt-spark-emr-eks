@@ -8,6 +8,18 @@ version: 2
 models:
   - name: customer_orders
     description: "Business-facing table joining orders with customer details — enriched with customer name and region"
+    config:
+      materialized: table
+      file_format: iceberg
+    meta:
+      # Join model (orders x customers) — moderate size, runs in-cluster (eks_client).
+      spark_config:
+        mode: "eks_client"
+        driver_cpu: "1"
+        driver_memory: "2g"
+        executor_cpu: "1"
+        executor_memory: "4g"
+        executor_instances: 2
     columns:
       - name: order_id
         description: "Unique identifier for each order"

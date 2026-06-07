@@ -2,17 +2,10 @@
 -- MARTS MODEL: orders
 -- Business-facing orders table with enriched data from staging.
 -- Uses incremental materialization with merge strategy for Iceberg ACID upserts.
+-- Materialization config is declared in orders.yml (single source of truth); the
+-- is_incremental() guard below still applies based on that config.
 -- Maps to Glue Data Catalog database: marts
 -- ---------------------------------------------------------------------------------------------------------------------
-
-{{
-    config(
-        materialized='incremental',
-        incremental_strategy='merge',
-        file_format='iceberg',
-        unique_key='order_id'
-    )
-}}
 
 with stg_orders as (
 
