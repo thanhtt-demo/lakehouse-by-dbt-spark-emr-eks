@@ -433,7 +433,11 @@ class SparkConfigManager(dg.ConfigurableResource):
                 "container_config": {
                     "resources": {
                         "requests": {"cpu": f"{res.driver_cpu}", "memory": k8s_mem},
-                        "limits": {"memory": k8s_mem},
+                        # Must set BOTH cpu and memory limits. The Dagster base job config /
+                        # namespace default caps cpu at 500m; without an explicit cpu limit here
+                        # the driver's cpu request (e.g. "1") would exceed that default limit and
+                        # k8s rejects the Job (422 "request must be <= cpu limit").
+                        "limits": {"cpu": f"{res.driver_cpu}", "memory": k8s_mem},
                     },
                     # Inject the step pod's own IP + name via the downward API. The eks_client
                     # backend reads POD_IP for spark.driver.host (so executors can dial back to
