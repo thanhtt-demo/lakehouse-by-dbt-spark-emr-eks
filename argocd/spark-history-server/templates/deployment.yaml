@@ -40,13 +40,17 @@ spec:
           command:
             - "/bin/sh"
             - "-c"
-            # The EMR image wires the S3 jars (hadoop-aws/S3A + EMRFS + AWS SDK) onto the driver
-            # via spark.driver.extraClassPath in /etc/spark/conf/spark-defaults.conf. That only
-            # applies to spark-submit-launched driver/executor JVMs — NOT to the HistoryServer
-            # daemon launched directly by spark-class, which builds its classpath solely from the
-            # Spark jars + SPARK_DIST_CLASSPATH. Without these jars the daemon can't resolve the
-            # s3:// (or s3a://) FileSystem and dies with ClassNotFoundException: S3AFileSystem.
-            # So we prepend the same EMR S3/Hadoop jars to SPARK_DIST_CLASSPATH here.
+            # The EMR image accesses S3 through EMRFS (com.amazon.ws.emr.hadoop.fs.EmrFileSystem,
+            # AWS SDK v1), wired onto the driver via spark.driver.extraClassPath in
+            # /etc/spark/conf/spark-defaults.conf. That mechanism only applies to
+            # spark-submit-launched driver/executor JVMs — NOT to the HistoryServer daemon launched
+            # directly by spark-class, which builds its classpath from the Spark jars +
+            # SPARK_DIST_CLASSPATH only. So we add the EMR S3/Hadoop jars (EMRFS + AWS SDK v1) here.
+            #
+            # We force fs.s3.impl=EmrFileSystem (in SPARK_HISTORY_OPTS) instead of the default
+            # open-source S3A connector: S3A in EMR's Hadoop needs the AWS SDK *v2* bundle, which
+            # the EMR image does not ship (it ships SDK v1 for EMRFS) — using S3A fails with
+            # NoClassDefFoundError: software.amazon.awssdk... EMRFS is the supported S3 client here.
             # exec so the JVM becomes PID 1 and receives SIGTERM cleanly on pod shutdown.
             - |
               export SPARK_DIST_CLASSPATH="$(/usr/lib/hadoop/bin/hadoop classpath 2>/dev/null):/usr/lib/hadoop/hadoop-aws.jar:/usr/share/aws/aws-java-sdk/*:/usr/share/aws/emr/emrfs/conf:/usr/share/aws/emr/emrfs/lib/*:/usr/share/aws/emr/emrfs/auxlib/*"
@@ -55,13 +59,16 @@ spec:
             - name: AWS_REGION
               value: "ap-southeast-1"
             # The HistoryServer reads its config from SPARK_HISTORY_OPTS (-D system properties).
+            #   fs.s3.impl                   force EMRFS for s3:// (see classpath note above).
             #   logDirectory                 where to replay event logs from (matches the jobs).
-            #   update.interval              S3 rescan cadence -> running-job freshness (~15-30s).
-            #   inProgressOptimization       incremental replay of .inprogress logs so running and
-            #                                hard-killed jobs still render what was flushed.
+            #   update.interval              S3 rescan cadence; a finished job shows ~15s after it
+            #                                ends (running short jobs are not visible here — use
+            #                                the driver's port-4040 UI; see docs).
+            #   inProgressOptimization       incremental replay of .inprogress logs.
             #   cleaner.*                    bound retention so S3 + replay set stay small.
             - name: SPARK_HISTORY_OPTS
               value: >-
+                -Dspark.hadoop.fs.s3.impl=com.amazon.ws.emr.hadoop.fs.EmrFileSystem
                 -Dspark.history.fs.logDirectory={{ .Values.eventLog.dir }}
                 -Dspark.history.ui.port={{ .Values.ui.port }}
                 -Dspark.history.fs.update.interval={{ .Values.eventLog.updateInterval }}
