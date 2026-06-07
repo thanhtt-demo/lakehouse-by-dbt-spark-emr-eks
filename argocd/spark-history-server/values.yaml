@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # SPARK HISTORY SERVER VALUES
-# image.repository/tag and serviceAccount.roleArn are populated from Terraform outputs
-# (same de-team Code Image + de-team IRSA role the Dagster user deployment uses).
+# serviceAccount.roleArn is populated from Terraform outputs (de-team IRSA role). The image is the
+# de-team BASE image (stable, decoupled from code deploys) — see the image block below.
 # ---------------------------------------------------------------------------------------------------------------------
 
 # Namespace the History Server runs in. `spark` already exists (created by the EMR Virtual
@@ -9,11 +9,16 @@
 namespace: spark
 
 image:
-  # Reuse the de-team Code Image: it is built FROM the EMR-on-EKS Spark base image, so it ships
-  # SPARK_HOME (/usr/lib/spark), the HistoryServer class, EMRFS (s3://), and the IRSA-aware AWS
-  # credential chain. CI keeps this tag in lock-step with the Dagster user-deployment image.
-  repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
-  tag: "eb6fcb95"
+  # Use the de-team BASE image (not the Code Image). The History Server only needs Spark +
+  # spark-class + EMRFS + the DataFlint JAR — all of which live in the base image — NOT the dbt /
+  # dagster project code. Critically, the base image:
+  #   - is rebuilt only when dependencies change (NOT on every code push), and
+  #   - is NOT touched by the CI `update-argocd` job (which only bumps the Code Image tag in
+  #     argocd/dagster/values.yaml),
+  # so the SHS image is decoupled from code deploys — rebuilding the de-team Code Image does NOT
+  # auto-change this version. `latest` only moves when you intentionally rebuild the base image.
+  repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-base"
+  tag: "latest"
   pullPolicy: Always
 
 serviceAccount:

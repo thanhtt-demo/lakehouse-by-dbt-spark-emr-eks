@@ -93,7 +93,7 @@ How it is wired (no `--packages` download at runtime):
 
 | Where | Mechanism |
 |---|---|
-| Plugin JAR | Baked into `$SPARK_HOME/jars` in `de-team/Dockerfile.base` (`io.dataflint:spark_2.12`). On the classpath of driver, executors, and the History Server (Code Image is built FROM base). |
+| Plugin JAR | Baked into `$SPARK_HOME/jars` in `de-team/Dockerfile.base` (`io.dataflint:spark_2.12`). On the classpath of the job driver/executors and of the History Server (which runs the **base image** directly). |
 | Job driver/executors | `spark.plugins=io.dataflint.spark.SparkDataflintPlugin` + `spark.dataflint.iceberg.autoCatalogDiscovery=true` in `DEFAULT_SPARK_PROPERTIES`. |
 | History Server | Auto-discovered from the JAR's `META-INF` SPI — **no extra config**; the DataFlint tab appears when a run is loaded from event logs. |
 
@@ -128,7 +128,7 @@ Two things are therefore needed (both in `templates/deployment.yaml`):
 If a future EMR base image moves these jar paths, adjust the `SPARK_DIST_CLASSPATH` line. Verify
 in-pod with `kubectl -n spark exec deploy/spark-history-server -- ls /usr/share/aws/emr/emrfs/lib`.
 
-> This classpath/SDK friction is the cost of reusing the EMR Code Image for the daemon. A
+> This classpath/SDK friction is the cost of running the EMR Spark image as the daemon. A
 > dedicated `apache/spark` + `hadoop-aws` + AWS SDK v2 image reading `s3a://` would avoid it, at
 > the cost of building and tracking another image (deferred for now).
 
@@ -169,8 +169,12 @@ The SHS reuses the **de-team IRSA role** (no new role):
 
 ## Deploy order
 
-`terragrunt apply` the two IRSA units (de-team-policy, de-team-role), rebuild/redeploy the Code
-Image so jobs pick up the new event-log Spark properties, then let ArgoCD sync the
-`spark-history-server` app (sync-wave 4). Keep its `image.tag` and `serviceAccount.roleArn` in
-`argocd/spark-history-server/values.yaml` in lock-step with the Dagster user-deployment image and
-the de-team role ARN.
+`terragrunt apply` the two IRSA units (de-team-policy, de-team-role). Rebuild the de-team **Base
+Image** (it bakes the DataFlint JAR) and then the Code Image so jobs pick up the new event-log +
+DataFlint Spark properties. Let ArgoCD sync the `spark-history-server` app (sync-wave 4).
+
+The SHS pins the **base image** (`de-team-base:latest`), so it is decoupled from code deploys —
+the CI `update-argocd` job bumps only `argocd/dagster/values.yaml`, never
+`argocd/spark-history-server/values.yaml`. The only value to keep current here is
+`serviceAccount.roleArn` (the de-team role ARN). Rebuilding the de-team Code Image does not change
+the SHS image; `latest` only moves when you rebuild the base image.
