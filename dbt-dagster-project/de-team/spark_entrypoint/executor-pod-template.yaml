@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# SPARK EXECUTOR POD TEMPLATE — eks_client mode
+# Baked into the Code Image at /app/executor-pod-template.yaml and referenced via
+# spark.kubernetes.executor.podTemplateFile (env SPARK_EXECUTOR_POD_TEMPLATE_FILE).
+#
+# Spark on Kubernetes cannot express tolerations through plain --conf, so this template supplies
+# the toleration needed to land executor pods on the Karpenter `spark-executors` NodePool, which
+# is tainted spark-role=executor:NoSchedule (Spot capacity). The nodeSelector is also set here
+# (in addition to the spark.kubernetes.node.selector.* conf) so scheduling is fully determined
+# by the template.
+#
+# Note: container name must be `spark-kubernetes-executor` for Spark to merge its generated
+# container spec (image, resources, env) into this template.
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app.kubernetes.io/part-of: dbt-lakehouse
+    spark-role: executor
+spec:
+  nodeSelector:
+    spark-role: executor
+  tolerations:
+    - key: spark-role
+      operator: Equal
+      value: executor
+      effect: NoSchedule
+  containers:
+    - name: spark-kubernetes-executor

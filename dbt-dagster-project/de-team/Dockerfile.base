@@ -27,7 +27,8 @@ RUN yum install -y git && yum clean all
 # dbt-core + dbt-spark: dbt framework with Spark adapter (method: session)
 # No extras needed — EMR base image already has PySpark, and we use session method (not PyHive/Thrift)
 # dagster + dagster-aws + dagster-dbt: Dagster orchestrator + AWS + dbt integrations (for user code pod)
-# dagster-pipes: PipesS3MessageWriter for Dagster Pipes protocol (runs inside Spark job)
+# dagster-k8s: k8s_job_executor (per-model step pod = Spark driver in eks_client mode)
+# dagster-pipes: PipesS3MessageWriter for Dagster Pipes protocol (runs inside Spark job, EMR path)
 # boto3: AWS SDK (EMR bundles it but pinning here avoids version drift)
 # Python 3.11 is the Spark runtime on EMR on EKS 7.13, so all dagster 1.13+ constraints
 # (Python>=3.10) are satisfied — safe to use the latest stable line.
@@ -38,12 +39,25 @@ ENV DAGSTER_HOME=/home/hadoop/dagster_home
 
 RUN mkdir -p /home/hadoop/dagster_home && chown hadoop:hadoop /home/hadoop/dagster_home
 
+# ---------------------------------------------------------------------------------------------------------------------
+# DBT VERSION PIN (partial-parse cache coupling)
+# dbt embeds its dbt-core version into target/partial_parse.msgpack; the cache is only reused at
+# runtime if dbt-core EXACTLY matches the version CI used to generate it (`dagster-dbt project
+# prepare-and-package`). A mismatch makes dbt silently discard the cache and full-parse (correct,
+# just slower). Keep these pins identical to .github/workflows/ci-cd.yml.
+# NOTE: dbt-core and dbt-spark version independently — dbt-spark's latest 1.9.x is 1.9.3 while
+# dbt-core is at 1.9.4. Pin each to its own exact version.
+# ---------------------------------------------------------------------------------------------------------------------
+ARG DBT_CORE_VERSION=1.9.4
+ARG DBT_SPARK_VERSION=1.9.3
+
 RUN python3.11 -m pip install --no-cache-dir --ignore-installed \
-    "dbt-core>=1.9,<1.10" \
-    "dbt-spark>=1.9,<1.10" \
+    "dbt-core==${DBT_CORE_VERSION}" \
+    "dbt-spark==${DBT_SPARK_VERSION}" \
     "dagster>=1.12,<1.13" \
     "dagster-aws>=0.28,<0.29" \
     "dagster-dbt>=0.28,<0.29" \
+    "dagster-k8s>=0.28,<0.29" \
     "dagster-pipes>=1.12,<1.13" \
     "dagster-postgres>=0.28,<0.29" \
     "boto3>=1.34,<2.0"

@@ -24,6 +24,7 @@ LABEL org.opencontainers.image.source="dbt-dagster-project/de-team"
 # ---------------------------------------------------------------------------------------------------------------------
 COPY --chown=hadoop:hadoop dbt_project/ /app/dbt_project/
 COPY --chown=hadoop:hadoop spark_entrypoint/entrypoint.py /app/entrypoint.py
+COPY --chown=hadoop:hadoop spark_entrypoint/executor-pod-template.yaml /app/executor-pod-template.yaml
 COPY --chown=hadoop:hadoop dagster_project/ /app/dagster_project/
 
 # Use hadoop user (matching base image — EMR on EKS default)

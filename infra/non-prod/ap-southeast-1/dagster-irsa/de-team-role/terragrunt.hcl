@@ -49,7 +49,7 @@ inputs = {
   oidc_providers = {
     this = {
       provider_arn               = dependency.eks.outputs.oidc_provider_arn
-      namespace_service_accounts = ["dagster:dagster-user-deployments", "dagster:dagster"]
+      namespace_service_accounts = ["dagster:dagster-user-deployments", "dagster:dagster", "spark:spark"]
     }
   }
 

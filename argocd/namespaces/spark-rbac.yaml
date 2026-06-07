@@ -1,0 +1,77 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# SPARK RBAC — eks_client mode (Spark on EKS, no EMR)
+# Deployed by ArgoCD at sync-wave 1 (with the spark namespace).
+#
+# Roles in this file:
+#   - ServiceAccount spark/spark      : identity executor pods run as. Annotated with the IRSA
+#                                       role ARN (lakehouse-at-scale-spark-executor) so executors
+#                                       get S3 + Glue credentials. The role ARN is populated from
+#                                       the Terraform output of spark-irsa/executor-role.
+#   - Role spark/spark-driver         : pod/configmap/service lifecycle the Spark driver needs in
+#                                       the spark namespace to create + manage executor pods.
+#   - RoleBinding                     : grants that Role to the Dagster step pod (the Spark driver
+#                                       in client mode), which runs in the dagster namespace as
+#                                       dagster-user-deployments.
+#
+# Only used when spark_submit_mode = eks_client. The EMR path does not need any of this.
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spark
+  namespace: spark
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: dbt-lakehouse
+  annotations:
+    # IRSA — executor pods reuse the shared de-team role (EMR + Athena + Glue + S3), the same
+    # role the Dagster user-deployment SA uses. One role for driver (Dagster step pod) and
+    # executors keeps wiring simple; trust for spark:spark is added in the de-team-role unit.
+    # ARN must match the dagster-user-deployments SA annotation in argocd/dagster/values.yaml.
+    eks.amazonaws.com/role-arn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260607035848292600000001"
+---
+# ---------------------------------------------------------------------------------------------------------------------
+# ROLE — what the Spark driver (Dagster step pod) may do inside the spark namespace.
+# Scoped to the exact resources Spark on k8s manages for executors: pods (+ logs), configmaps,
+# services, and PVCs (for executor local storage). No cluster-wide grants.
+# ---------------------------------------------------------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spark-driver
+  namespace: spark
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: dbt-lakehouse
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/status"]
+    verbs: ["get", "list", "watch", "create", "delete", "deletecollection"]
+  - apiGroups: [""]
+    resources: ["configmaps", "services"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+---
+# ---------------------------------------------------------------------------------------------------------------------
+# ROLEBINDING — bind the spark-driver Role to the Dagster step pod SA (cross-namespace subject:
+# the driver runs in the dagster namespace, executors are created in the spark namespace).
+# ---------------------------------------------------------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: spark-driver
+  namespace: spark
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: dbt-lakehouse
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: spark-driver
+subjects:
+  - kind: ServiceAccount
+    name: dagster-user-deployments
+    namespace: dagster

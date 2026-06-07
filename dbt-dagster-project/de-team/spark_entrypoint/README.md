@@ -1,5 +1,11 @@
 # Spark Entrypoint (de-team)
 
+> **Scope:** This entrypoint is used **only by the `emr_containers` submit mode**. The default
+> mode is now `eks_client`, where dbt runs in-process inside the Dagster step pod (the Spark
+> driver in client mode) and `entrypoint.py` is **not** invoked. See
+> [`../dagster_project/spark_backends/README.md`](../dagster_project/spark_backends/README.md)
+> for the dual-mode architecture and how to toggle between them.
+
 `entrypoint.py` is the script that Spark executes on the EMR on EKS driver pod. It bridges Dagster and dbt-spark: Dagster submits a Spark job pointing at this file, the script runs `dbt build --select <model>` in-process against the active SparkSession, and reports results back to Dagster via [Dagster Pipes](https://docs.dagster.io/concepts/dagster-pipes/).
 
 ## Role in the stack
