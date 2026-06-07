@@ -8,7 +8,7 @@ version: 2
 
 models:
   - name: stg_raw_orders
-    description: "Staged orders — source-conformed with column renaming and type casting"
+    description: "Synthetic orders with a skewed customer_id (data-skew demo) — generated in-model, no external seed"
     config:
       materialized: table
       file_format: iceberg
@@ -17,9 +17,9 @@ models:
         mode: "eks_client"
         driver_cpu: "1"
         driver_memory: "2g"
-        executor_cpu: "1"
+        executor_cpu: "2"
         executor_memory: "2g"
-        executor_instances: 1
+        executor_instances: 2
     columns:
       - name: order_id
         description: "Unique identifier for each order"

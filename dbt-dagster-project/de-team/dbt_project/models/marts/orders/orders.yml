@@ -1,54 +1,49 @@
 # ---------------------------------------------------------------------------------------------------------------------
-# MARTS MODEL: orders
-# Business-facing orders table — incremental with Iceberg merge strategy.
-# Custom Spark resources defined in meta.spark_config for this heavy workload.
+# MARTS MODEL: orders  (DATA-SKEW DEMO)
+# Customer-level aggregation of stg_raw_orders (GROUP BY customer_id). The upstream data is skewed
+# onto one hot customer_id, so this shuffle is heavily imbalanced — the scenario we want DataFlint
+# to detect. Full-table rebuild (not incremental) and AQE disabled so the skew is NOT auto-fixed.
 # ---------------------------------------------------------------------------------------------------------------------
 
 version: 2
 
 models:
   - name: orders
-    description: "Business-facing orders table with enriched data, incrementally updated via Iceberg merge"
+    description: "Customer-level order aggregates (data-skew demo) — GROUP BY a skewed customer_id"
     config:
-      materialized: incremental
-      incremental_strategy: merge
+      materialized: table
       file_format: iceberg
-      unique_key: order_id
-      # Adding the etl_at column to an existing incremental Iceberg table: append_new_columns
-      # makes dbt ALTER TABLE ADD COLUMN on the next run instead of silently ignoring it
-      # (default on_schema_change='ignore' would leave etl_at out of incremental rows).
-      on_schema_change: append_new_columns
     meta:
       spark_config:
-        # Per-model override of the project-wide spark_submit_mode. This heavy, incremental
-        # model is pinned to the managed EMR runtime; remove to inherit the project default
-        # (eks_client). Valid values: eks_client | emr_containers.
+        # Heavier resources + several executors so the skew is visible: one reduce task churns
+        # ~95% of the rows while the others finish almost immediately (long-tail task).
         mode: "eks_client"
         driver_cpu: "1"
         driver_memory: "2g"
-        executor_cpu: "1"
+        executor_cpu: "2"
         executor_memory: "2g"
-        executor_instances: 1
+        executor_instances: 2
+        spark_properties:
+          # Disable Adaptive Query Execution so Spark does NOT coalesce/rebalance the skewed
+          # shuffle partitions. Without this, AQE could mask the skew and DataFlint would have
+          # nothing to flag. Remove this to demo AQE auto-mitigation instead.
+          spark.sql.adaptive.enabled: "false"
     columns:
-      - name: order_id
-        description: "Unique identifier for each order"
+      - name: customer_id
+        description: "Customer the orders are aggregated by (the skewed key)"
         tests:
           - not_null
           - unique
-      - name: customer_id
-        description: "Customer who placed the order"
-        tests:
-          - not_null
-      - name: order_date
-        description: "Date the order was placed"
-      - name: status
-        description: "Current order status (pending, completed, cancelled)"
-      - name: amount
-        description: "Order total amount"
-      - name: currency
-        description: "Currency code"
-      - name: updated_at
-        description: "Timestamp of last update from source"
+      - name: order_count
+        description: "Number of orders for the customer"
+      - name: total_amount
+        description: "Sum of order amounts for the customer"
+      - name: avg_amount
+        description: "Average order amount for the customer"
+      - name: first_order_date
+        description: "Earliest order date for the customer"
+      - name: last_order_date
+        description: "Latest order date for the customer"
       - name: dbt_updated_at
         description: "Timestamp when dbt last processed this record"
       - name: etl_at
