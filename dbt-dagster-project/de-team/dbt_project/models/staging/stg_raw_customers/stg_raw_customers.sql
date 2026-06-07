@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------------------------------------------------
 -- STAGING MODEL: stg_raw_customers
 -- Source-conformed model — selects from raw customers source with minimal transformations.
--- Materialized as table (default from dbt_project.yml).
+-- Materialization + Spark config declared in stg_raw_customers.yml.
 -- Maps to Glue Data Catalog database: staging
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -24,4 +24,7 @@ renamed as (
 
 )
 
-select * from renamed
+select
+    *,
+    {{ etl_at() }} as etl_at
+from renamed

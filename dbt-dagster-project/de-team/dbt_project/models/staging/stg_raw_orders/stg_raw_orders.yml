@@ -1,25 +1,25 @@
 # ---------------------------------------------------------------------------------------------------------------------
-# MARTS MODEL: customer_orders
-# Business-facing table joining orders with customer details for enriched reporting.
+# STAGING MODEL: stg_raw_orders
+# Source-conformed orders — minimal transformation (rename/cast), 1:1 with raw.raw_orders.
+# Lightweight workload: runs in-cluster (eks_client) with small Spark resources.
 # ---------------------------------------------------------------------------------------------------------------------
 
 version: 2
 
 models:
-  - name: customer_orders
-    description: "Business-facing table joining orders with customer details — enriched with customer name and region"
+  - name: stg_raw_orders
+    description: "Staged orders — source-conformed with column renaming and type casting"
     config:
       materialized: table
       file_format: iceberg
     meta:
-      # Join model (orders x customers) — moderate size, runs in-cluster (eks_client).
       spark_config:
         mode: "eks_client"
         driver_cpu: "1"
         driver_memory: "2g"
         executor_cpu: "1"
-        executor_memory: "4g"
-        executor_instances: 2
+        executor_memory: "2g"
+        executor_instances: 1
     columns:
       - name: order_id
         description: "Unique identifier for each order"
@@ -30,21 +30,15 @@ models:
         description: "Customer who placed the order"
         tests:
           - not_null
-      - name: customer_name
-        description: "Full name of the customer"
-      - name: customer_email
-        description: "Customer email address"
-      - name: customer_region
-        description: "Customer region (e.g. APAC, EMEA, NA)"
       - name: order_date
         description: "Date the order was placed"
       - name: status
-        description: "Current order status (pending, completed, cancelled)"
+        description: "Current order status"
       - name: amount
         description: "Order total amount"
       - name: currency
         description: "Currency code"
       - name: updated_at
-        description: "Timestamp of last update from source"
+        description: "Timestamp of last update"
       - name: etl_at
         description: "ETL load timestamp in Vietnam time (Asia/Ho_Chi_Minh) — for data lineage / tracing"

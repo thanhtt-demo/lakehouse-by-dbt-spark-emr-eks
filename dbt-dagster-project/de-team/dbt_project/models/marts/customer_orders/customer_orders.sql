@@ -35,4 +35,7 @@ joined as (
 
 )
 
-select * from joined
+select
+    *,
+    {{ etl_at() }} as etl_at
+from joined

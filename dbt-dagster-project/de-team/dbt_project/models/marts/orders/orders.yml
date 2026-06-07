@@ -14,17 +14,21 @@ models:
       incremental_strategy: merge
       file_format: iceberg
       unique_key: order_id
+      # Adding the etl_at column to an existing incremental Iceberg table: append_new_columns
+      # makes dbt ALTER TABLE ADD COLUMN on the next run instead of silently ignoring it
+      # (default on_schema_change='ignore' would leave etl_at out of incremental rows).
+      on_schema_change: append_new_columns
     meta:
       spark_config:
         # Per-model override of the project-wide spark_submit_mode. This heavy, incremental
         # model is pinned to the managed EMR runtime; remove to inherit the project default
         # (eks_client). Valid values: eks_client | emr_containers.
-        mode: "emr_containers"
+        mode: "eks_client"
         driver_cpu: "2"
         driver_memory: "4g"
         executor_cpu: "2"
         executor_memory: "8g"
-        executor_instances: 4
+        executor_instances: 1
     columns:
       - name: order_id
         description: "Unique identifier for each order"
@@ -47,3 +51,5 @@ models:
         description: "Timestamp of last update from source"
       - name: dbt_updated_at
         description: "Timestamp when dbt last processed this record"
+      - name: etl_at
+        description: "ETL load timestamp in Vietnam time (Asia/Ho_Chi_Minh) — for data lineage / tracing"

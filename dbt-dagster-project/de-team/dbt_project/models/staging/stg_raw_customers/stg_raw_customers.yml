@@ -1,0 +1,42 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# STAGING MODEL: stg_raw_customers
+# Source-conformed customers — minimal transformation (rename/cast), 1:1 with raw.raw_customers.
+# Lightweight workload: runs in-cluster (eks_client) with small Spark resources.
+# ---------------------------------------------------------------------------------------------------------------------
+
+version: 2
+
+models:
+  - name: stg_raw_customers
+    description: "Staged customers — source-conformed with column renaming and type casting"
+    config:
+      materialized: table
+      file_format: iceberg
+    meta:
+      spark_config:
+        mode: "eks_client"
+        driver_cpu: "1"
+        driver_memory: "2g"
+        executor_cpu: "1"
+        executor_memory: "2g"
+        executor_instances: 1
+    columns:
+      - name: customer_id
+        description: "Unique identifier for each customer"
+        tests:
+          - not_null
+          - unique
+      - name: customer_name
+        description: "Full name of the customer"
+        tests:
+          - not_null
+      - name: email
+        description: "Customer email address"
+      - name: region
+        description: "Customer region"
+      - name: created_at
+        description: "Timestamp when customer was first created"
+      - name: updated_at
+        description: "Timestamp of last update"
+      - name: etl_at
+        description: "ETL load timestamp in Vietnam time (Asia/Ho_Chi_Minh) — for data lineage / tracing"

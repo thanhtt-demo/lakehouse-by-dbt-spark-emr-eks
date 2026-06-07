@@ -21,7 +21,8 @@ select
     amount,
     currency,
     updated_at,
-    current_timestamp() as dbt_updated_at
+    current_timestamp() as dbt_updated_at,
+    {{ etl_at() }} as etl_at
 
 from stg_orders
 

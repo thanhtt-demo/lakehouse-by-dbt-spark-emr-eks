@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------------------------------------------------
 -- STAGING MODEL: stg_raw_orders
 -- Source-conformed model — selects from raw orders source with minimal transformations.
--- Materialized as table (default from dbt_project.yml).
+-- Materialization + Spark config declared in stg_raw_orders.yml.
 -- Maps to Glue Data Catalog database: staging
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -25,4 +25,7 @@ renamed as (
 
 )
 
-select * from renamed
+select
+    *,
+    {{ etl_at() }} as etl_at
+from renamed
