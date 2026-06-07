@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import glob
 import os
+import re
 import socket
 import sys
 import tempfile
@@ -118,6 +119,10 @@ def run_eks_client(
     driver_host = _resolve_driver_host()
     driver_pod_name = os.getenv("POD_NAME", socket.gethostname())
 
+    # Readable executor pod name prefix: DNS-1035 safe (lowercase, '-', starts with a letter).
+    safe = re.sub(r"[^a-z0-9-]", "-", model_name.lower()).strip("-") or "model"
+    executor_pod_name_prefix = f"dbt-{safe}"[:40].rstrip("-")
+
     spark_conf = spark_config_manager.build_eks_client_spark_conf(
         config=config,
         image_uri=image_uri,
@@ -128,6 +133,8 @@ def run_eks_client(
         driver_port=driver_port,
         block_manager_port=block_manager_port,
         executor_pod_template_file=executor_pod_template_file,
+        executor_pod_name_prefix=executor_pod_name_prefix,
+        model_label=model_name,
     )
 
     context.log.info(

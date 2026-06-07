@@ -332,6 +332,8 @@ class SparkConfigManager(dg.ConfigurableResource):
         driver_port: int = 0,
         block_manager_port: int = 0,
         executor_pod_template_file: str = "",
+        executor_pod_name_prefix: str = "",
+        model_label: str = "",
         extra_conf: Optional[Dict[str, str]] = None,
     ) -> Dict[str, str]:
         """Build the Spark conf map for an in-process client-mode SparkSession on EKS.
@@ -387,6 +389,18 @@ class SparkConfigManager(dg.ConfigurableResource):
             # Pod template supplies the toleration for the spark-executors taint
             # (and any other executor-pod customization Spark conf can't express).
             conf["spark.kubernetes.executor.podTemplateFile"] = executor_pod_template_file
+            # Spark must know which container in the template is the executor container to
+            # merge its generated spec (image/resources/env) into. Must match the container
+            # name in executor-pod-template.yaml; otherwise Spark errors with
+            # "Container name is required when pod template is present".
+            conf["spark.kubernetes.executor.podTemplateContainerName"] = "spark-kubernetes-executor"
+        # Readable executor pod names (e.g. dbt-stg-raw-orders-<id>-exec-1) + labels so
+        # `kubectl get pods -l spark-role=executor` / `-l dbt-model=<model>` works.
+        if executor_pod_name_prefix:
+            conf["spark.kubernetes.executor.podNamePrefix"] = executor_pod_name_prefix
+        conf["spark.kubernetes.executor.label.spark-role"] = "executor"
+        if model_label:
+            conf["spark.kubernetes.executor.label.dbt-model"] = model_label
         if driver_pod_name:
             conf["spark.kubernetes.driver.pod.name"] = driver_pod_name
         if driver_port:
@@ -403,7 +417,7 @@ class SparkConfigManager(dg.ConfigurableResource):
         return conf
 
     @staticmethod
-    def build_k8s_driver_op_tags(config: SparkJobConfig) -> dict:
+    def build_k8s_driver_op_tags(config: SparkJobConfig, model_name: str = "") -> dict:
         """Build Dagster `dagster-k8s/config` op_tags so the step pod (= Spark driver in
         client mode) is sized from the model's driver_cpu / driver_memory.
 
@@ -427,6 +441,13 @@ class SparkConfigManager(dg.ConfigurableResource):
             k8s_mem = f"{mem[:-1]}Mi"
         else:
             k8s_mem = mem
+
+        # Labels so the step pod (= Spark driver) is easy to find:
+        #   kubectl get pods -n dagster -l spark-role=driver
+        #   kubectl get pods -n dagster -l dbt-model=<model>
+        labels = {"spark-role": "driver"}
+        if model_name:
+            labels["dbt-model"] = model_name
 
         return {
             "dagster-k8s/config": {
@@ -453,5 +474,6 @@ class SparkConfigManager(dg.ConfigurableResource):
                         },
                     ],
                 },
+                "pod_template_spec_metadata": {"labels": labels},
             },
         }

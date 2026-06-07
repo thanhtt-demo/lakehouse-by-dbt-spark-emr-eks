@@ -122,7 +122,7 @@ _translator = SparkDbtTranslator()
 
 def _build_model_assets(model_name: str, config):
     """Create a single-model @dbt_assets op that dispatches to the resolved Spark backend."""
-    op_tags = SparkConfigManager.build_k8s_driver_op_tags(config)
+    op_tags = SparkConfigManager.build_k8s_driver_op_tags(config, model_name=model_name)
 
     @dbt_assets(
         manifest=dbt_project.manifest_path,
