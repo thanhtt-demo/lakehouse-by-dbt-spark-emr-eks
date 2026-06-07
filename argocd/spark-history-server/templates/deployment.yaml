@@ -40,8 +40,17 @@ spec:
           command:
             - "/bin/sh"
             - "-c"
+            # The EMR image wires the S3 jars (hadoop-aws/S3A + EMRFS + AWS SDK) onto the driver
+            # via spark.driver.extraClassPath in /etc/spark/conf/spark-defaults.conf. That only
+            # applies to spark-submit-launched driver/executor JVMs — NOT to the HistoryServer
+            # daemon launched directly by spark-class, which builds its classpath solely from the
+            # Spark jars + SPARK_DIST_CLASSPATH. Without these jars the daemon can't resolve the
+            # s3:// (or s3a://) FileSystem and dies with ClassNotFoundException: S3AFileSystem.
+            # So we prepend the same EMR S3/Hadoop jars to SPARK_DIST_CLASSPATH here.
             # exec so the JVM becomes PID 1 and receives SIGTERM cleanly on pod shutdown.
-            - "exec ${SPARK_HOME:-/usr/lib/spark}/bin/spark-class org.apache.spark.deploy.history.HistoryServer"
+            - |
+              export SPARK_DIST_CLASSPATH="$(/usr/lib/hadoop/bin/hadoop classpath 2>/dev/null):/usr/lib/hadoop/hadoop-aws.jar:/usr/share/aws/aws-java-sdk/*:/usr/share/aws/emr/emrfs/conf:/usr/share/aws/emr/emrfs/lib/*:/usr/share/aws/emr/emrfs/auxlib/*"
+              exec ${SPARK_HOME:-/usr/lib/spark}/bin/spark-class org.apache.spark.deploy.history.HistoryServer
           env:
             - name: AWS_REGION
               value: "ap-southeast-1"

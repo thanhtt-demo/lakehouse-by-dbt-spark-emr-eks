@@ -41,6 +41,22 @@ A running job flushes rolling event-log chunks while it executes; the SHS rescan
 `spark.history.fs.update.interval` (15s). The job appears under **"Show incomplete applications"**
 with ~15–30s latency — within the accepted window. No per-driver port-4040 ingress needed.
 
+## S3 classpath for the daemon (important)
+
+The EMR image wires its S3 jars (hadoop-aws/S3A + EMRFS + AWS SDK) onto the *driver* JVM via
+`spark.driver.extraClassPath` in `/etc/spark/conf/spark-defaults.conf`. That mechanism only
+applies to driver/executor JVMs launched by `spark-submit` — it does **not** reach the
+HistoryServer daemon launched directly by `spark-class`, which builds its classpath from the Spark
+jars + `SPARK_DIST_CLASSPATH` only. Without the S3 jars the daemon fails at startup with
+`ClassNotFoundException: org.apache.hadoop.fs.s3a.S3AFileSystem`.
+
+The deployment therefore prepends the EMR S3/Hadoop jars to `SPARK_DIST_CLASSPATH` before
+launching the daemon. The jar locations (`/usr/lib/hadoop/hadoop-aws.jar`,
+`/usr/share/aws/aws-java-sdk/*`, `/usr/share/aws/emr/emrfs/{conf,lib,auxlib}`) are the standard
+EMR paths; if a future EMR base image moves them, adjust the `SPARK_DIST_CLASSPATH` line in
+`templates/deployment.yaml`. Verify in-pod with `kubectl -n spark exec deploy/spark-history-server
+-- ls /usr/lib/hadoop/hadoop-aws.jar`.
+
 ## Accessing the UI
 
 The SHS Service is `ClusterIP` (the History Server has **no authentication**, so it is not
