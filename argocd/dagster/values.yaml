@@ -146,17 +146,24 @@ dagster:
           # When a model runs in eks_client mode, the Dagster step pod IS the Spark
           # driver (client deploy mode) and launches executor pods directly on EKS —
           # no EMR Virtual Cluster, no EMR uplift. These env vars wire that path:
-          #   SPARK_K8S_NAMESPACE              namespace executor pods are created in
-          #   SPARK_EXECUTOR_SERVICE_ACCOUNT   SA (IRSA: S3 + Glue) executors run as
+          #   SPARK_K8S_NAMESPACE              namespace executor pods are created in.
+          #     MUST equal the namespace the Dagster step pod runs in (dagster), because
+          #     Spark looks up the driver pod (spark.kubernetes.driver.pod.name) in this
+          #     same namespace to set executor owner refs. Pointing it elsewhere fails with
+          #     "No pod was found named dagster-step-... in namespace <x> (driver pod)".
+          #   SPARK_EXECUTOR_SERVICE_ACCOUNT   SA executors run as. Reuses the de-team IRSA
+          #     SA (S3 + Glue), the same SA the driver step pod uses — one role, one SA.
           #   SPARK_EXECUTOR_POD_TEMPLATE_FILE pod template adding the toleration for the
-          #                                    spark-executors (Spot) NodePool taint
+          #                                    spark-executors (Spot) NodePool taint.
+          # Executors still land on the spark-executors Spot nodes via the pod template's
+          # nodeSelector/toleration — namespace is independent of node scheduling.
           # The driver↔executor wiring (POD_IP / POD_NAME) is injected by the per-model
           # op_tags (dagster-k8s/config env via the downward API), not here.
           # -------------------------------------------------------------------
           - name: SPARK_K8S_NAMESPACE
-            value: "spark"
+            value: "dagster"
           - name: SPARK_EXECUTOR_SERVICE_ACCOUNT
-            value: "spark"
+            value: "dagster-user-deployments"
           - name: SPARK_EXECUTOR_POD_TEMPLATE_FILE
             value: "/app/executor-pod-template.yaml"
           - name: DBT_PROJECT_DIR

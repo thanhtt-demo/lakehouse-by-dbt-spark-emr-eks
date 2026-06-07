@@ -50,8 +50,8 @@ So driver sizing (`driver_cpu` / `driver_memory`) is applied to the step pod via
 
 | Concern | Provided by |
 |---|---|
-| Executor pod AWS creds (S3 + Glue) | Shared **de-team** IRSA role, reused by SA `spark:spark` (trust added in Terraform `dagster-irsa/de-team-role`; annotation in `argocd/namespaces/spark-rbac.yaml`). Same role the Dagster step pod / driver uses — one role for driver + executors. |
-| Driver → executor pod lifecycle in `spark` ns | Role/RoleBinding `spark-driver` (`argocd/namespaces/spark-rbac.yaml`) bound to `dagster:dagster-user-deployments`. |
+| Executor pod AWS creds (S3 + Glue) | Shared **de-team** IRSA role on the `dagster-user-deployments` SA — the same SA the driver step pod uses. Executors run in the `dagster` namespace as this SA (one role for driver + executors). |
+| Driver → executor pod lifecycle | Role/RoleBinding `spark-driver` in the **dagster** namespace (`argocd/namespaces/spark-rbac.yaml`) bound to `dagster:dagster-user-deployments`. Executors run in the dagster namespace because Spark looks up the driver pod in `spark.kubernetes.namespace`. |
 | Executors land on Spot NodePool | `spark_entrypoint/executor-pod-template.yaml` (toleration for `spark-role=executor:NoSchedule`), referenced via `SPARK_EXECUTOR_POD_TEMPLATE_FILE`. |
 | Driver ↔ executor wiring (POD_IP/POD_NAME) | Downward API env injected by `SparkConfigManager.build_k8s_driver_op_tags`. |
 | `k8s_job_executor` | `dagster-k8s` (installed in `Dockerfile.base`), set in `definitions.py`. |
