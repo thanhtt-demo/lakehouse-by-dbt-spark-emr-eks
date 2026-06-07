@@ -17,7 +17,7 @@ models:
         mode: "eks_client"
         driver_cpu: "1"
         driver_memory: "2g"
-        executor_cpu: "2"
+        executor_cpu: "1"
         executor_memory: "2g"
         executor_instances: 2
     columns:

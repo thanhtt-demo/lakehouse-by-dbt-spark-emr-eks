@@ -40,10 +40,8 @@ models:
         description: "Sum of order amounts for the customer"
       - name: avg_amount
         description: "Average order amount for the customer"
-      - name: first_order_date
-        description: "Earliest order date for the customer"
-      - name: last_order_date
-        description: "Latest order date for the customer"
+      - name: max_order_seq
+        description: "Max row_number from the (skewed) window partition — forces the window stage to run"
       - name: dbt_updated_at
         description: "Timestamp when dbt last processed this record"
       - name: etl_at
