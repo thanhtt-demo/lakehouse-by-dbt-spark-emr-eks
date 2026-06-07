@@ -41,6 +41,11 @@ DEFAULT_SPARK_PROPERTIES: Dict[str, str] = {
     "spark.hadoop.hive.metastore.client.factory.class": (
         "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
     ),
+    # Session timezone = Vietnam. Makes current_timestamp() and all timestamp rendering use
+    # Asia/Ho_Chi_Minh, so audit columns (etl_at) read as Vietnam local time and timestamptz
+    # values are stored at the correct instant. Without this, the session defaults to UTC and a
+    # VN-wall value written into a timestamptz column ends up 7h off.
+    "spark.sql.session.timeZone": "Asia/Ho_Chi_Minh",
 }
 
 

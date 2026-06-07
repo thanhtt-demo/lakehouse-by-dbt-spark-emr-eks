@@ -24,10 +24,10 @@ models:
         # model is pinned to the managed EMR runtime; remove to inherit the project default
         # (eks_client). Valid values: eks_client | emr_containers.
         mode: "eks_client"
-        driver_cpu: "2"
-        driver_memory: "4g"
-        executor_cpu: "2"
-        executor_memory: "8g"
+        driver_cpu: "1"
+        driver_memory: "2g"
+        executor_cpu: "1"
+        executor_memory: "2g"
         executor_instances: 1
     columns:
       - name: order_id

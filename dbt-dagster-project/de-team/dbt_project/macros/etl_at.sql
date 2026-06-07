@@ -1,13 +1,13 @@
 {#-
-  -- etl_at(): current timestamp in Vietnam time (Asia/Ho_Chi_Minh), for data lineage / tracing.
+  -- etl_at(): ETL load timestamp in Vietnam time, for data lineage / tracing.
   --
-  -- Session-timezone independent: current_timestamp() is the "now" instant rendered in the Spark
-  -- session timezone (spark.sql.session.timeZone). We normalize it to true UTC using
-  -- current_timezone() (the session tz), then shift to Asia/Ho_Chi_Minh. This yields correct
-  -- Vietnam wall-clock time regardless of how the Spark session timezone is configured.
+  -- The Spark session timezone is set to Asia/Ho_Chi_Minh (spark.sql.session.timeZone in
+  -- DEFAULT_SPARK_PROPERTIES), so current_timestamp() already returns the correct Vietnam
+  -- instant and renders as Vietnam local time. No from_utc/to_utc conversion is needed —
+  -- doing so here would double-shift the value.
   --
   -- Use as:  {{ etl_at() }} as etl_at
 -#}
 {% macro etl_at() %}
-    from_utc_timestamp(to_utc_timestamp(current_timestamp(), current_timezone()), 'Asia/Ho_Chi_Minh')
+    current_timestamp()
 {% endmacro %}
