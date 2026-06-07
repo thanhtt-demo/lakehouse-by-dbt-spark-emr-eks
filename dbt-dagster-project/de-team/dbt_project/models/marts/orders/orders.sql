@@ -26,6 +26,6 @@ select
 
 from stg_orders
 
-{% if is_incremental() %}
-where updated_at > (select max(updated_at) from {{ this }})
-{% endif %}
+-- {% if is_incremental() %}
+-- where updated_at > (select max(updated_at) from {{ this }})
+-- {% endif %}

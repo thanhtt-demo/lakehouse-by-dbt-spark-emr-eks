@@ -93,11 +93,19 @@ inputs = {
         ]
       },
       {
-        Sid    = "LogsBucketRead"
+        Sid    = "LogsBucketReadWrite"
         Effect = "Allow"
         Action = [
+          # Read: the Spark History Server (running as this same de-team role via the
+          # spark:spark-history-server SA) replays event logs from this bucket.
           "s3:GetObject",
           "s3:ListBucket",
+          "s3:GetBucketLocation",
+          # Write: in eks_client mode the Dagster step pod (Spark driver) and its executor
+          # pods run as this role and must write Spark event logs to spark-events/. Rolling
+          # event logs also rename/replace chunk objects, so DeleteObject is required.
+          "s3:PutObject",
+          "s3:DeleteObject",
         ]
         Resource = [
           dependency.s3_spark_logs.outputs.s3_bucket_arn,

@@ -1,0 +1,17 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# SPARK HISTORY SERVER HELM CHART
+# Standalone Spark History Server (Spark UI) that replays Spark event logs from S3.
+# Serves the UI for BOTH finished/failed jobs and currently-running jobs (the latter appear as
+# "incomplete applications", refreshed every spark.history.fs.update.interval ~15s).
+#
+# Local chart (no upstream dependency) — the History Server is just `spark-class
+# org.apache.spark.deploy.history.HistoryServer` from the EMR-on-EKS Spark image.
+# Deployed by ArgoCD (sync-wave: 4, after Dagster).
+# ---------------------------------------------------------------------------------------------------------------------
+
+apiVersion: v2
+name: spark-history-server
+description: Spark History Server — serves the Spark UI by replaying event logs from S3
+type: application
+version: 1.0.0
+appVersion: "3.5"

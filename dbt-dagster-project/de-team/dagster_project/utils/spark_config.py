@@ -46,6 +46,30 @@ DEFAULT_SPARK_PROPERTIES: Dict[str, str] = {
     # values are stored at the correct instant. Without this, the session defaults to UTC and a
     # VN-wall value written into a timestamptz column ends up 7h off.
     "spark.sql.session.timeZone": "Asia/Ho_Chi_Minh",
+    # -----------------------------------------------------------------------------------------------------------------
+    # SPARK EVENT LOGS -> S3 (feeds the Spark History Server / Spark UI)
+    # Every job (both eks_client and emr_containers) writes its event log to a shared S3 prefix
+    # that the standalone Spark History Server (argocd/spark-history-server) reads. This is the
+    # single source for the Spark UI of both finished and running jobs.
+    #
+    # Why this survives a failed job: both backends call spark.stop() in a finally block, so on a
+    # normal dbt failure (query error, failed test, exception) Spark shuts down gracefully and the
+    # event log is flushed + closed on S3 -> the History Server can replay it fully. Rolling logs
+    # (below) bound the loss to only the currently-open chunk if the driver is hard-killed
+    # (OOMKilled / node evicted) before it can flush.
+    #
+    # Why running jobs show up: rolling event logs flush completed chunks to S3 periodically, and
+    # the History Server polls every spark.history.fs.update.interval (15s, set on the server). A
+    # running job therefore appears as an "incomplete application" with ~15-30s latency.
+    #
+    # Scheme note: s3:// uses EMRFS, which is guaranteed present on the EMR-on-EKS base image used
+    # by the driver/executor pods AND the History Server pod, so reader/writer stay consistent.
+    # EMR's container-log monitoring (SPARK_S3_LOGS_URI=.../emr-on-eks/) is a separate concern;
+    # event logs live under a distinct .../spark-events/ prefix in the same bucket.
+    "spark.eventLog.enabled": "true",
+    "spark.eventLog.dir": "s3://lakehouse-at-scale-spark-logs/spark-events/",
+    "spark.eventLog.rolling.enabled": "true",
+    "spark.eventLog.rolling.maxFileSize": "128m",
 }
 
 

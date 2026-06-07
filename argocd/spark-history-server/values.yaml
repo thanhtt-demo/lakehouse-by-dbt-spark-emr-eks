@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# SPARK HISTORY SERVER VALUES
+# image.repository/tag and serviceAccount.roleArn are populated from Terraform outputs
+# (same de-team Code Image + de-team IRSA role the Dagster user deployment uses).
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Namespace the History Server runs in. `spark` already exists (created by the EMR Virtual
+# Cluster / argocd namespaces app) and is whitelisted on the ArgoCD AppProject.
+namespace: spark
+
+image:
+  # Reuse the de-team Code Image: it is built FROM the EMR-on-EKS Spark base image, so it ships
+  # SPARK_HOME (/usr/lib/spark), the HistoryServer class, EMRFS (s3://), and the IRSA-aware AWS
+  # credential chain. CI keeps this tag in lock-step with the Dagster user-deployment image.
+  repository: "560503716668.dkr.ecr.ap-southeast-1.amazonaws.com/lakehouse-at-scale/de-team-code"
+  tag: "eb6fcb95"
+  pullPolicy: Always
+
+serviceAccount:
+  create: true
+  name: spark-history-server
+  # De-team IRSA role (shared) — read-only on the spark-logs bucket is enough to replay logs.
+  # The role trust policy must list spark:spark-history-server (see dagster-irsa/de-team-role).
+  roleArn: "arn:aws:iam::560503716668:role/lakehouse-at-scale-dagster-de-team-20260607035848292600000001"
+
+# Event log location the History Server replays. Must match spark.eventLog.dir set on the jobs
+# (DEFAULT_SPARK_PROPERTIES in dagster_project/utils/spark_config.py).
+eventLog:
+  dir: "s3://lakehouse-at-scale-spark-logs/spark-events/"
+  # How often the server rescans S3 for new/updated logs. Lower = fresher running-job view,
+  # higher = fewer S3 LIST calls. 15s gives the ~15-30s freshness requested.
+  updateInterval: "15s"
+  # Reap event logs older than this so S3 (and the server's replay set) stays bounded.
+  cleaner:
+    enabled: true
+    maxAge: "7d"
+
+ui:
+  port: 18080
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1Gi
+  limits:
+    cpu: 500m
+    memory: 2Gi
+
+# Pin to the long-running workload NodePool and shield from Karpenter consolidation, same as the
+# Dagster webserver/daemon — otherwise the UI bounces when the node is reclaimed.
+nodeSelector:
+  role: workload
+
+# ---------------------------------------------------------------------------------------------------------------------
+# SERVICE EXPOSURE
+# Default ClusterIP: reach the UI via `kubectl -n spark port-forward svc/spark-history-server
+# 18080:18080`. The Spark History Server has NO built-in authentication, so it is intentionally
+# NOT exposed publicly. Switch type to LoadBalancer / add an authenticated Ingress only behind
+# proper access control.
+# ---------------------------------------------------------------------------------------------------------------------
+service:
+  type: ClusterIP

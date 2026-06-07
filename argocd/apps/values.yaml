@@ -48,6 +48,16 @@ applications:
       valueFiles:
         - values.yaml
 
+  - name: spark-history-server
+    namespace: argocd
+    path: argocd/spark-history-server
+    targetNamespace: spark
+    syncWave: "4"
+    helm:
+      enabled: true
+      valueFiles:
+        - values.yaml
+
 # ---------------------------------------------------------------------------------------------------------------------
 # ARGOCD APPPROJECT
 # Defines which namespaces and repos the project has access to.
