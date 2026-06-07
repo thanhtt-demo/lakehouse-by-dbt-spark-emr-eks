@@ -469,7 +469,11 @@ class SparkConfigManager(dg.ConfigurableResource):
                     # Inject the step pod's own IP + name via the downward API. The eks_client
                     # backend reads POD_IP for spark.driver.host (so executors can dial back to
                     # this driver) and POD_NAME for spark.kubernetes.driver.pod.name.
+                    # PYTHONUNBUFFERED=1 disables stdout block-buffering so dbt's in-process logs
+                    # stream to the step's compute logs (uploaded every ~30s by the
+                    # S3ComputeLogManager) instead of flushing all at once when dbt finishes.
                     "env": [
+                        {"name": "PYTHONUNBUFFERED", "value": "1"},
                         {
                             "name": "POD_IP",
                             "value_from": {"field_ref": {"field_path": "status.podIP"}},
