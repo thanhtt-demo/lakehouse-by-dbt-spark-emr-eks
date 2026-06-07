@@ -72,6 +72,22 @@ RUN python3.11 -m pip install --no-cache-dir --ignore-installed \
 # ---------------------------------------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------------------------------------
+# DATAFLINT OBSERVABILITY PLUGIN
+# DataFlint (https://github.com/dataflint/spark) adds a modern real-time tab to the Spark UI.
+# Drop the plugin JAR into $SPARK_HOME/jars so it is on the classpath of every Spark process
+# built from this image WITHOUT any --packages download at run time:
+#   - job driver/executors -> live DataFlint tab on the driver UI (:4040) while running, once
+#     spark.plugins=io.dataflint.spark.SparkDataflintPlugin is set (see DEFAULT_SPARK_PROPERTIES).
+#   - Spark History Server (uses the Code Image built FROM this base) -> the DataFlint history
+#     plugin is auto-discovered via the JAR's META-INF SPI; no extra config needed.
+# EMR 7.13 ships Spark 3.5 on Scala 2.12, so use the Spark 3.x / Scala 2.12 artifact.
+# ---------------------------------------------------------------------------------------------------------------------
+ARG DATAFLINT_VERSION=0.9.9
+RUN curl -fSL \
+    "https://repo1.maven.org/maven2/io/dataflint/spark_2.12/${DATAFLINT_VERSION}/spark_2.12-${DATAFLINT_VERSION}.jar" \
+    -o "/usr/lib/spark/jars/dataflint-spark_2.12-${DATAFLINT_VERSION}.jar"
+
+# ---------------------------------------------------------------------------------------------------------------------
 # LABELS
 # ---------------------------------------------------------------------------------------------------------------------
 LABEL maintainer="de-team"

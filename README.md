@@ -270,6 +270,31 @@ argocd admin initial-password -n argocd
 # Dagster UI — http://localhost:3000
 kubectl port-forward svc/dagster-dagster-webserver -n dagster 3000:80
 ```
+
+#### Spark UI
+
+Two complementary entry points (see `docs/spark-history-server.md` for the full picture):
+
+```bash
+# Spark History Server — http://localhost:18080
+# Spark UI of FINISHED / FAILED jobs (replays event logs from S3, ~15s after a job ends).
+kubectl port-forward svc/spark-history-server -n spark 18080:18080
+
+# Live Spark UI of a RUNNING job — http://localhost:4040
+# The driver's own web UI (real-time). A short job is NOT visible in the History Server while
+# it runs, so use this to watch a job in progress.
+#   eks_client mode — driver is the Dagster step pod (namespace dagster):
+kubectl -n dagster get pods -l spark-role=driver        # optional: -l dbt-model=<model>
+kubectl -n dagster port-forward pod/<driver-pod> 4040:4040
+#   emr_containers mode — driver is an EMR driver pod (namespace spark):
+kubectl -n spark get pods
+kubectl -n spark port-forward pod/<driver-pod> 4040:4040
+```
+
+Both the live driver UI (`:4040`) and the History Server (`:18080`) include a **DataFlint** tab
+([dataflint/spark](https://github.com/dataflint/spark)) for a richer real-time query view,
+performance heat map, and alerts. The plugin JAR is baked into the de-team Base Image; see
+`docs/spark-history-server.md` for details.
 ### 6.2 Create raw table for test(athena query)
 
 ```sql
@@ -489,6 +514,7 @@ Helm charts and Kubernetes manifests for ArgoCD GitOps deployment. Uses the App-
 | Namespaces | `namespaces/` | 1 | `dagster` and `spark` namespace manifests |
 | Karpenter | `karpenter/` | 2 | Official chart v1.1.1 + NodePool/EC2NodeClass CRDs |
 | Dagster | `dagster/` | 3 | Official chart v1.9.6 + 2 user code deployments |
+| Spark History Server | `spark-history-server/` | 4 | Spark UI for finished/failed jobs (replays S3 event logs) |
 
 Karpenter NodePools:
 - `spark-executors`: Spot (m5.xlarge/2xlarge, m6i.xlarge/2xlarge), taint `spark-role=executor:NoSchedule`, consolidateAfter 300s
@@ -546,7 +572,7 @@ Four Dockerfiles following the Base Image + Code Image pattern:
 
 | File | Base | Contents |
 |---|---|---|
-| `de-team/Dockerfile.base` | `public.ecr.aws/emr-on-eks/spark/emr-7.13.0` | Spark + dbt-spark + dagster-pipes + Iceberg JAR |
+| `de-team/Dockerfile.base` | `public.ecr.aws/emr-on-eks/spark/emr-7.13.0` | Spark + dbt-spark + dagster-pipes + Iceberg JAR + DataFlint plugin |
 | `de-team/Dockerfile.code` | `de-team-base:latest` | COPY dbt_project + spark_entrypoint + dagster_project |
 | `sales-team/Dockerfile.base` | `python:3.10-slim` | dbt-athena + dagster + dagster-aws + dagster-dbt |
 | `sales-team/Dockerfile.code` | `sales-team-base:latest` | COPY dbt_project + dagster_project |

@@ -78,6 +78,33 @@ Division of responsibility:
 A first-class running-job UI (a Service/Ingress in front of the driver 4040 ports, or surfacing
 the link in Dagster) is **not implemented yet** — port-forward is the current path.
 
+## DataFlint (richer UI for live + completed jobs)
+
+[DataFlint](https://github.com/dataflint/spark) is a Spark plugin that adds a modern,
+real-time tab to the Spark UI. It is integrated here so the same plugin enhances **both** views:
+
+- **Driver UI (:4040) while a job runs** — DataFlint gives a live query/cluster view, performance
+  heat map, and alerts. This is the practical answer to "watch a running job", far nicer than the
+  stock 4040 tabs (and not subject to the S3 event-log delay).
+- **History Server (:18080) for finished jobs** — DataFlint also enriches completed runs replayed
+  from S3 event logs.
+
+How it is wired (no `--packages` download at runtime):
+
+| Where | Mechanism |
+|---|---|
+| Plugin JAR | Baked into `$SPARK_HOME/jars` in `de-team/Dockerfile.base` (`io.dataflint:spark_2.12`). On the classpath of driver, executors, and the History Server (Code Image is built FROM base). |
+| Job driver/executors | `spark.plugins=io.dataflint.spark.SparkDataflintPlugin` + `spark.dataflint.iceberg.autoCatalogDiscovery=true` in `DEFAULT_SPARK_PROPERTIES`. |
+| History Server | Auto-discovered from the JAR's `META-INF` SPI — **no extra config**; the DataFlint tab appears when a run is loaded from event logs. |
+
+Access is the same as the plain Spark UI — open the driver `:4040` (running) or the History
+Server `:18080` (finished) and pick the **DataFlint** tab.
+
+> **Rollout order:** rebuild `Dockerfile.base` (which bakes the JAR) **before** shipping the
+> `spark.plugins` property, otherwise jobs fail at startup with `ClassNotFoundException` for
+> `io.dataflint.spark.SparkDataflintPlugin`. The base→code image chain keeps them consistent as
+> long as the base image is rebuilt first. Bump the version via the `DATAFLINT_VERSION` build arg.
+
 ## S3 access for the daemon (important)
 
 The EMR image accesses S3 through **EMRFS** (`com.amazon.ws.emr.hadoop.fs.EmrFileSystem`, AWS

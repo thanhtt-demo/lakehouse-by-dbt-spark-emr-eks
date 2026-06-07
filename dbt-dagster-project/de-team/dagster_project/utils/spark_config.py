@@ -70,6 +70,18 @@ DEFAULT_SPARK_PROPERTIES: Dict[str, str] = {
     "spark.eventLog.dir": "s3://lakehouse-at-scale-spark-logs/spark-events/",
     "spark.eventLog.rolling.enabled": "true",
     "spark.eventLog.rolling.maxFileSize": "128m",
+    # -----------------------------------------------------------------------------------------------------------------
+    # DATAFLINT OBSERVABILITY PLUGIN
+    # Enables the DataFlint plugin (https://github.com/dataflint/spark) on the job driver/executors.
+    # The plugin JAR is baked into $SPARK_HOME/jars in Dockerfile.base, so we only flip it on here.
+    # Result: a richer real-time tab on the driver Spark UI (:4040) while the job runs — this is the
+    # live running-job view (the History Server only shows jobs after they finish). The same plugin
+    # also enriches completed runs in the History Server (auto-loaded there from the classpath).
+    # autoCatalogDiscovery surfaces Iceberg write metrics (files/rows written) in the DataFlint tab.
+    # NOTE: rollout order — rebuild Dockerfile.base (bakes the JAR) BEFORE shipping this property,
+    # else jobs fail at startup with ClassNotFoundException for the plugin class.
+    "spark.plugins": "io.dataflint.spark.SparkDataflintPlugin",
+    "spark.dataflint.iceberg.autoCatalogDiscovery": "true",
 }
 
 
