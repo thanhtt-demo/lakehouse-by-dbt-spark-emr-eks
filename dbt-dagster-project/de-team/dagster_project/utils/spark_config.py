@@ -394,11 +394,12 @@ class SparkConfigManager(dg.ConfigurableResource):
             # name in executor-pod-template.yaml; otherwise Spark errors with
             # "Container name is required when pod template is present".
             conf["spark.kubernetes.executor.podTemplateContainerName"] = "spark-kubernetes-executor"
-        # Readable executor pod names (e.g. dbt-stg-raw-orders-<id>-exec-1) + labels so
-        # `kubectl get pods -l spark-role=executor` / `-l dbt-model=<model>` works.
+        # Readable executor pod names (e.g. dbt-stg-raw-orders-<id>-exec-1) + a model label so
+        # `kubectl get pods -l dbt-model=<model>` works. NOTE: do NOT set a custom `spark-role`
+        # executor label — Spark reserves it and adds spark-role=executor itself (setting it via
+        # spark.kubernetes.executor.label.* throws "reserved for Spark" and aborts the context).
         if executor_pod_name_prefix:
             conf["spark.kubernetes.executor.podNamePrefix"] = executor_pod_name_prefix
-        conf["spark.kubernetes.executor.label.spark-role"] = "executor"
         if model_label:
             conf["spark.kubernetes.executor.label.dbt-model"] = model_label
         if driver_pod_name:

@@ -18,7 +18,6 @@ kind: Pod
 metadata:
   labels:
     app.kubernetes.io/part-of: dbt-lakehouse
-    spark-role: executor
 spec:
   nodeSelector:
     spark-role: executor
