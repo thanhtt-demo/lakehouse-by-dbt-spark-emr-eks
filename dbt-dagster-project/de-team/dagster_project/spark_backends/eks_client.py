@@ -18,8 +18,10 @@
 
 from __future__ import annotations
 
+import glob
 import os
 import socket
+import sys
 import tempfile
 
 import dagster as dg
@@ -32,6 +34,44 @@ from .base import (
     seed_partial_parse,
     summarize_dbt_failure,
 )
+
+
+# Common SPARK_HOME locations in the EMR on EKS base image.
+_SPARK_HOME_CANDIDATES = ("/usr/lib/spark", "/opt/spark")
+
+
+def _ensure_pyspark_importable() -> None:
+    """Make the Spark-bundled pyspark importable from this (non-spark-submit) process.
+
+    The EMR on EKS image ships pyspark under $SPARK_HOME/python (+ a py4j zip), NOT as a pip
+    package. spark-submit normally injects these onto PYTHONPATH; in eks_client mode we run dbt
+    in-process (no spark-submit), so we replicate that here (findspark-style). Using the bundled
+    pyspark guarantees it matches the image's Spark JVM + Iceberg jars.
+
+    No-op if pyspark already imports (e.g. local dev with a pip-installed pyspark).
+    """
+    try:
+        import pyspark  # noqa: F401
+        return
+    except ImportError:
+        pass
+
+    spark_home = os.environ.get("SPARK_HOME")
+    candidates = [spark_home] if spark_home else list(_SPARK_HOME_CANDIDATES)
+    for home in candidates:
+        if not home:
+            continue
+        py_dir = os.path.join(home, "python")
+        if not os.path.isdir(py_dir):
+            continue
+        # Ensure pyspark's JVM launch can find Spark (jars, spark-submit) at runtime.
+        os.environ.setdefault("SPARK_HOME", home)
+        if py_dir not in sys.path:
+            sys.path.insert(0, py_dir)
+        for py4j in glob.glob(os.path.join(py_dir, "lib", "py4j-*.zip")):
+            if py4j not in sys.path:
+                sys.path.insert(0, py4j)
+        return
 
 
 def _resolve_driver_host() -> str:
@@ -64,6 +104,7 @@ def run_eks_client(
       SPARK_DRIVER_PORT / SPARK_BLOCKMANAGER_PORT — optional fixed ports (default: ephemeral)
       DBT_PROJECT_DIR         — dbt project dir (default: /app/dbt_project)
     """
+    _ensure_pyspark_importable()
     from pyspark.sql import SparkSession
 
     image_uri = os.getenv("SPARK_CODE_IMAGE_URI", "")
